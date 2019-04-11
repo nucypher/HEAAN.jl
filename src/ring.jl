@@ -290,13 +290,13 @@ function decode(ring::Ring, mx::Array{BigInt, 1}, slots::Int, logp::Int, logq::I
 
     for i in 0:slots-1
         idx = i * gap
-        tmp = rem(mx[idx+1], q)
+        tmp = mod(mx[idx+1], q)
         if NumBits(tmp) == logq
             tmp -= q
         end
         vr = scaleDownToReal(tmp, logp)
 
-        tmp = rem(mx[idx + Nh + 1], q)
+        tmp = mod(mx[idx + Nh + 1], q)
         if NumBits(tmp) == logq
             tmp -= q
         end
