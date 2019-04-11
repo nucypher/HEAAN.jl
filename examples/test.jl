@@ -5,7 +5,8 @@ using HEAAN:
     Ring, SecretKey, MyRNG, Scheme, randomComplex, encryptSingle, decryptSingle,
     randomComplexArray, encrypt, hexfloat, decrypt,
     add, mult, imult,
-    addLeftRotKey!, leftRotateFast
+    addLeftRotKey!, leftRotateFast,
+    addConjKey!, conjugate
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -152,9 +153,38 @@ function testRotateFast(logq::Int, logp::Int, logn::Int, logr::Int)
 end
 
 
+function testConjugate(logq::Int, logp::Int, logn::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+
+    n = 2^logn
+
+    addConjKey!(rng, scheme, secretKey)
+
+    mvec = randomComplexArray(rng, n)
+    mvecconj = conj.(mvec)
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    cipher_res = conjugate(scheme, cipher)
+
+    dvecconj = decrypt(scheme, secretKey, cipher_res)
+
+    for i in 1:n
+        println(hexfloat(real(mvecconj[i])), " ", hexfloat(real(dvecconj[i])))
+        println(hexfloat(imag(mvecconj[i])), " ", hexfloat(imag(dvecconj[i])))
+    end
+end
+
+
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
 #testMult(100, 30, 4)
 #testimult(100, 30, 4)
-testRotateFast(100, 30, 4, 1)
+#testRotateFast(100, 30, 4, 1)
+testConjugate(100, 30, 4)

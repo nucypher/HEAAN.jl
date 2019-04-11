@@ -284,3 +284,51 @@ function leftRotateFast(scheme::Scheme, cipher::Ciphertext, r::Int)
 
     cipher_res
 end
+
+
+function addConjKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey)
+    ring = scheme.ring
+
+    np = cld(1 + logQQ + logN + 2, 59)
+    ax = sampleUniform2(rng, logQQ)
+    bx = mult(ring, secretKey.sx, ax, np, QQ)
+    bx = subFromGaussAndEqual(rng, ring, bx, QQ)
+
+    sxconj = conjugate(ring, secretKey.sx)
+    leftShiftAndEqual!(sxconj, logQ, QQ)
+    bx = add(ring, bx, sxconj, QQ)
+
+    key = Key()
+    key.rax .= CRT(ring, ax, nprimes)
+    key.rbx .= CRT(ring, bx, nprimes)
+
+    scheme.keyMap[CONJUGATION] = key
+end
+
+
+function conjugate(scheme::Scheme, cipher::Ciphertext)
+
+    ring = scheme.ring
+
+    q = ring.qpows[cipher.logq+1]
+    qQ = ring.qpows[cipher.logq + logQ + 1]
+
+    cipher_res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
+
+    bxconj = conjugate(ring, cipher.bx)
+    axconj = conjugate(ring, cipher.ax)
+
+    key = scheme.keyMap[CONJUGATION]
+
+    np = cld(cipher.logq + logQQ + logN + 2, 59)
+    raconj = CRT(ring, axconj, np)
+    cipher_res.ax .= multDNTT(ring, raconj, key.rax, np, qQ)
+    cipher_res.bx .= multDNTT(ring, raconj, key.rbx, np, qQ)
+
+    rightShiftAndEqual!(cipher_res.ax, logQ)
+    rightShiftAndEqual!(cipher_res.bx, logQ)
+
+    cipher_res.bx .= add(ring, cipher_res.bx, bxconj, q)
+
+    cipher_res
+end

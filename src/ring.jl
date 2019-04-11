@@ -352,3 +352,13 @@ function leftRotate(ring::Ring, p::Array{BigInt, 1}, r::Int)
     end
     res
 end
+
+
+function conjugate(ring::Ring, p::Array{BigInt, 1})
+    res = similar(p)
+    res[0+1] = p[0+1]
+    for i in 1:N-1
+        res[i+1] = -p[N - i + 1]
+    end
+    res
+end
