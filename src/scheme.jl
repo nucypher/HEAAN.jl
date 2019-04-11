@@ -178,3 +178,12 @@ end
 function decode(scheme::Scheme, plain::Plaintext)
     decode(scheme.ring, plain.mx, plain.n, plain.logp, plain.logq)
 end
+
+
+function add(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
+    q = scheme.ring.qpows[cipher1.logq+1]
+    cipher_res = Ciphertext(cipher1.logp, cipher1.logq, cipher1.n)
+    cipher_res.ax .= add(scheme.ring, cipher1.ax, cipher2.ax, q)
+    cipher_res.bx .= add(scheme.ring, cipher1.bx, cipher2.bx, q)
+    cipher_res
+end

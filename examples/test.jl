@@ -3,7 +3,8 @@ push!(LOAD_PATH, "../src")
 using HEAAN
 using HEAAN:
     Ring, SecretKey, MyRNG, Scheme, randomComplex, encryptSingle, decryptSingle,
-    randomComplexArray, encrypt, hexfloat, decrypt
+    randomComplexArray, encrypt, hexfloat, decrypt,
+    add
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -46,5 +47,32 @@ function testEncrypt(logq::Int, logp::Int, logn::Int)
 end
 
 
+function testAdd(logq::Int, logp::Int, logn::Int)
+
+    rng = MyRNG(12345)
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+
+    n = 2^logn
+    mvec1 = randomComplexArray(rng, n)
+    mvec2 = randomComplexArray(rng, n)
+    madd = mvec1 .+ mvec2
+
+    cipher1 = encrypt(rng, scheme, mvec1, n, logp, logq)
+    cipher2 = encrypt(rng, scheme, mvec2, n, logp, logq)
+
+    cipher_res = add(scheme, cipher1, cipher2)
+
+    dadd = decrypt(scheme, secretKey, cipher_res)
+
+    for i in 1:n
+        println(hexfloat(real(madd[i])), " ", hexfloat(real(dadd[i])))
+        println(hexfloat(imag(madd[i])), " ", hexfloat(imag(dadd[i])))
+    end
+end
+
+
 #testEncryptSingle(100, 30)
-testEncrypt(100, 30, 4)
+#testEncrypt(100, 30, 4)
+testAdd(100, 30, 4)

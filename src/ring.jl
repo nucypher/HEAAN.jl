@@ -306,3 +306,8 @@ function decode(ring::Ring, mx::Array{BigInt, 1}, slots::Int, logp::Int, logq::I
     end
     EMB(ring, vals, slots)
 end
+
+
+function add(ring::Ring, p1::Array{BigInt, 1}, p2::Array{BigInt, 1}, modulus::BigInt)
+    AddMod.(p1, p2, modulus)
+end
