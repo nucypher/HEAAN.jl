@@ -228,3 +228,11 @@ function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
 
     res
 end
+
+
+function imult(scheme::Scheme, cipher::Ciphertext)
+    res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
+    res.ax .= multByMonomial(scheme.ring, cipher.ax, Nh)
+    res.bx .= multByMonomial(scheme.ring, cipher.bx, Nh)
+    res
+end

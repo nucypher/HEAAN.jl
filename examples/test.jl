@@ -4,7 +4,7 @@ using HEAAN
 using HEAAN:
     Ring, SecretKey, MyRNG, Scheme, randomComplex, encryptSingle, decryptSingle,
     randomComplexArray, encrypt, hexfloat, decrypt,
-    add, mult
+    add, mult, imult
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -99,7 +99,32 @@ function testMult(logq::Int, logp::Int, logn::Int)
 end
 
 
+function testimult(logq::Int, logp::Int, logn::Int)
+
+    rng = MyRNG(12345)
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+
+    n = 2^logn
+    mvec = randomComplexArray(rng, n)
+    imvec = mvec .* im
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+    cipher_res = imult(scheme, cipher)
+
+    idvec = decrypt(scheme, secretKey, cipher_res)
+
+    for i in 1:n
+        println(hexfloat(real(imvec[i])), " ", hexfloat(real(idvec[i])))
+        println(hexfloat(imag(imvec[i])), " ", hexfloat(imag(idvec[i])))
+    end
+end
+
+
+
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
-testMult(100, 30, 4)
+#testMult(100, 30, 4)
+testimult(100, 30, 4)

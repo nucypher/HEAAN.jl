@@ -328,3 +328,10 @@ function addNTT(ring::Ring, ra::Array{UInt64, 1}, rb::Array{UInt64, 1}, np::Int)
     addNTT(ring.multiplier, ra, rb, np);
 end
 
+
+function multByMonomial(ring::Ring, p::Array{BigInt, 1}, monomialDeg::Int)
+    shift = monomialDeg % M
+    pp = Polynomial(p, true)
+    pp_shifted = shift_polynomial(pp, shift)
+    pp_shifted.coeffs
+end
