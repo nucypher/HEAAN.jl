@@ -20,7 +20,7 @@ end
 function AddMod(x::BigInt, y::BigInt, q::BigInt)
     res = x + y
     if res > 0
-        rem(res, q) # if `x+y` is negative, the result is in range `q-1...0`, otherwise `0...q-1`.
+        rem(res, q)
     else
         res
     end
