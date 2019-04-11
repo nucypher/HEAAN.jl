@@ -5,6 +5,29 @@ using Primes
 using DarkIntegers
 
 
+mysin(x) = ccall((:sin, "libc"), Float64, (Float64,), x)
+mycos(x) = ccall((:cos, "libc"), Float64, (Float64,), x)
+
+
+function hexfloat(x::Float64)
+    ux = reinterpret(UInt64, x)
+    m = ux & ((1 << 52) - 1)
+    ux = (ux - m) >> 52
+    e = signed(ux & ((1 << 11) - 1)) - 1023
+    s = ux & 0x800
+
+    ms = string(m, base=16)
+    if length(ms) < 13
+        ms = "0"^(13 - length(ms)) * ms
+    end
+    ms = replace(ms, r"0+$" => s"")
+
+    ss = s == 0 ? "" : "-"
+    es = e < 0 ? "" : "+"
+    "$(ss)0x1.$(ms)p$(es)$e"
+end
+
+
 mutable struct MyRNG
     state :: UInt64
 end

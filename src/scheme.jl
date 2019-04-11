@@ -91,6 +91,22 @@ function encodeSingle(val::Complex{Float64}, logp::Int, logq::Int)
 end
 
 
+function encrypt(
+        rng::MyRNG, scheme::Scheme, vals::Array{Complex{Float64}, 1}, n::Int, logp::Int, logq::Int)
+    plain = encode(scheme, vals, n, logp, logq)
+    encryptMsg(rng, scheme, plain)
+end
+
+
+function encode(scheme::Scheme, vals::Array{Complex{Float64}, 1}, n::Int, logp::Int, logq::Int)
+    p = Plaintext(logp, logq, n)
+    p.mx .= 0
+    # TODO: note that it only fills certain indices, not the whole array
+    encode(scheme.ring, p.mx, vals, n, logp + logQ)
+    p
+end
+
+
 function encryptMsg(rng::MyRNG, scheme::Scheme, plain::Plaintext)
 
     qQ = scheme.ring.qpows[plain.logq + logQ + 1]
@@ -124,6 +140,11 @@ function decryptSingle(scheme::Scheme, secretKey::SecretKey, cipher::Ciphertext)
     decodeSingle(scheme.ring, plain)
 end
 
+function decrypt(scheme::Scheme, secretKey::SecretKey, cipher::Ciphertext)
+    plain = decryptMsg(scheme, secretKey, cipher)
+    decode(scheme, plain)
+end
+
 
 function decryptMsg(scheme::Scheme, secretKey::SecretKey, cipher::Ciphertext)
     q = scheme.ring.qpows[cipher.logq+1]
@@ -151,4 +172,9 @@ function decodeSingle(ring::Ring, plain::Plaintext)
     i = scaleDownToReal(tmp, plain.logp)
 
     r + im * i
+end
+
+
+function decode(scheme::Scheme, plain::Plaintext)
+    decode(scheme.ring, plain.mx, plain.n, plain.logp, plain.logq)
 end

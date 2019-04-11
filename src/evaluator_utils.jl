@@ -1,6 +1,8 @@
 randomReal(rng::MyRNG, bound::Float64 = 1.0) = myrand_float(rng) * bound
 randomComplex(rng::MyRNG, bound::Float64 = 1.0) =
     randomReal(rng, bound) + im * randomReal(rng, bound)
+randomComplexArray(rng::MyRNG, n::Int, bound::Float64 = 1.0) =
+    [randomComplex(rng, bound) for i in 1:n]
 
 
 function scaleUpToZZ(x::Float64, logp::Int)
