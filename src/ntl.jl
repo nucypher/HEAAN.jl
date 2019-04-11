@@ -14,10 +14,16 @@ end
 =#
 
 # TODO: the NTL AddMod() should only be applied to numbers in range 0...q-1.
-# In HEAAN, it is often applied to negative numbers and somehow works.
+# In HEAAN, it is often applied to negative numbers and somehow works,
+# Even thougn in this case AddMod does not do anything.
 # This function tries to imitate this behavior.
 function AddMod(x::BigInt, y::BigInt, q::BigInt)
-    rem(x + y, q) # if `x+y` is negative, the result is in range `q-1...0`, otherwise `0...q-1`.
+    res = x + y
+    if res > 0
+        rem(res, q) # if `x+y` is negative, the result is in range `q-1...0`, otherwise `0...q-1`.
+    else
+        res
+    end
 end
 
 

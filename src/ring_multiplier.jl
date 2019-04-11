@@ -254,3 +254,56 @@ function reconstruct(rm::RingMultiplier, rx::Array{UInt64, 1}, n::Int, np::Int, 
     res = mod(res, q)
     res
 end
+
+
+function multDNTT(
+        rm::RingMultiplier, ra::Array{UInt64, 1}, rb::Array{UInt64, 1}, np::Int, modulus::BigInt)
+
+    rx = Array{UInt64}(undef, np<<logN)
+    for i in 0:np-1
+        rai = ra[(i<<logN)+1:((i+1)<<logN)]
+        rbi = rb[(i<<logN)+1:((i+1)<<logN)]
+
+        pi = rm.pVec[i+1]
+        pri = rm.prVec[i+1]
+
+        tp = RRElem{UInt64, pi}
+
+        rxi = tp.(rai) .* tp.(rbi)
+
+        rx[(i<<logN)+1:((i+1)<<logN)] = DarkIntegers.ntt(rxi, inverse=true, negacyclic=true)
+    end
+
+    # reconstruct
+    res_bi = Array{BigInt}(undef, N)
+
+    pProdnp = rm.pProd[np]
+    ps = rm.pVec[1:np]
+    full_modulus = prod(BigInt.(ps))
+    # totient of a prime `p` is just `p-1`
+    reconstruct_coeffs = [powmod(full_modulus ÷ p, p - 1, full_modulus) for p in ps]
+
+    for i in 1:N
+        r = mod(sum(BigInt.(rx[i:N:end]) .* reconstruct_coeffs), full_modulus)
+        res_bi[i] = mod(r > (full_modulus >> 1) ? (r - full_modulus) : r, modulus)
+        #res_bi[i] = reconstruct(rm, res, i, np, modulus) # TODO: check if that is faster
+    end
+    res_bi
+end
+
+
+function addNTT(rm::RingMultiplier, ra::Array{UInt64, 1}, rb::Array{UInt64, 1}, np::Int)
+    res = similar(ra)
+    for i in 0:np-1
+        offset = i << logN
+        pi = rm.pVec[i+1]
+        for n in 0:N-1
+            # TODO: seems to be just addmod()?
+            res[offset+n+1] = ra[offset+n+1] + rb[offset+n+1]
+            if res[offset+n+1] > pi
+                res[offset+n+1] -= pi
+            end
+        end
+    end
+    res
+end

@@ -311,3 +311,19 @@ end
 function add(ring::Ring, p1::Array{BigInt, 1}, p2::Array{BigInt, 1}, modulus::BigInt)
     AddMod.(p1, p2, modulus)
 end
+
+
+function sub(ring::Ring, p1::Array{BigInt, 1}, p2::Array{BigInt, 1}, modulus::BigInt)
+    AddMod.(p1, -p2, modulus)
+end
+
+
+function multDNTT(ring::Ring, ra::Array{UInt64, 1}, rb::Array{UInt64, 1}, np::Int, q::BigInt)
+    multDNTT(ring.multiplier, ra, rb, np, q)
+end
+
+
+function addNTT(ring::Ring, ra::Array{UInt64, 1}, rb::Array{UInt64, 1}, np::Int)
+    addNTT(ring.multiplier, ra, rb, np);
+end
+

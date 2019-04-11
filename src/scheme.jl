@@ -187,3 +187,44 @@ function add(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
     cipher_res.bx .= add(scheme.ring, cipher1.bx, cipher2.bx, q)
     cipher_res
 end
+
+
+function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
+    res = Ciphertext(cipher1.logp + cipher2.logp, cipher1.logq, cipher1.n)
+
+    ring = scheme.ring
+
+    q = ring.qpows[cipher1.logq+1]
+    qQ = ring.qpows[cipher1.logq + logQ + 1]
+
+    np = cld(2 + cipher1.logq + cipher2.logq + logN + 2, 59)
+
+    ra1 = CRT(ring, cipher1.ax, np)
+    rb1 = CRT(ring, cipher1.bx, np)
+    ra2 = CRT(ring, cipher2.ax, np)
+    rb2 = CRT(ring, cipher2.bx, np)
+
+    axax = multDNTT(ring, ra1, ra2, np, q)
+    bxbx = multDNTT(ring, rb1, rb2, np, q)
+
+    ra1 = addNTT(ring, ra1, rb1, np)
+    ra2 = addNTT(ring, ra2, rb2, np)
+
+    axbx = multDNTT(ring, ra1, ra2, np, q)
+
+    key = scheme.keyMap[MULTIPLICATION]
+
+    np = cld(cipher1.logq + logQQ + logN + 2, 59)
+    raa = CRT(ring, axax, np)
+    res.ax .= multDNTT(ring, raa, key.rax, np, qQ)
+    res.bx .= multDNTT(ring, raa, key.rbx, np, qQ)
+    rightShiftAndEqual!(res.ax, logQ)
+    rightShiftAndEqual!(res.bx, logQ)
+
+    res.ax .= add(ring, res.ax, axbx, q)
+    res.ax .= sub(ring, res.ax, bxbx, q)
+    res.ax .= sub(ring, res.ax, axax, q)
+    res.bx .= add(ring, res.bx, bxbx, q)
+
+    res
+end
