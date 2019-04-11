@@ -291,6 +291,7 @@ function decode(ring::Ring, mx::Array{BigInt, 1}, slots::Int, logp::Int, logq::I
     for i in 0:slots-1
         idx = i * gap
         tmp = mod(mx[idx+1], q)
+        # TODO: if q is a power of 2 (which it always is?), these checks are unnecessary
         if NumBits(tmp) == logq
             tmp -= q
         end
