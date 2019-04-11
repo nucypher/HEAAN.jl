@@ -335,3 +335,20 @@ function multByMonomial(ring::Ring, p::Array{BigInt, 1}, monomialDeg::Int)
     pp_shifted = shift_polynomial(pp, shift)
     pp_shifted.coeffs
 end
+
+
+function leftRotate(ring::Ring, p::Array{BigInt, 1}, r::Int)
+    # TODO: what's the difference from multByMonomial()?
+    res = similar(p)
+    pow = ring.rotGroup[r+1]
+    for i in 0:N-1
+        ipow = i * pow
+        shift = ipow % M
+        if shift < N
+            res[shift+1] = p[i+1]
+        else
+            res[shift - N + 1] = -p[i+1]
+        end
+    end
+    res
+end

@@ -27,7 +27,7 @@ struct Scheme
 
         keyMap = Dict(ENCRYPTION => enc_key, MULTIPLICATION => mult_key)
 
-        new(ring, isSerialized, keyMap)
+        new(ring, isSerialized, keyMap, Dict{Int, Key}())
     end
 
 end
@@ -235,4 +235,52 @@ function imult(scheme::Scheme, cipher::Ciphertext)
     res.ax .= multByMonomial(scheme.ring, cipher.ax, Nh)
     res.bx .= multByMonomial(scheme.ring, cipher.bx, Nh)
     res
+end
+
+
+function addLeftRotKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey, r::Int)
+
+    ring = scheme.ring
+
+    np = cld(1 + logQQ + logN + 2, 59)
+    ax = sampleUniform2(rng, logQQ)
+    bx = mult(ring, secretKey.sx, ax, np, QQ)
+    bx = subFromGaussAndEqual(rng, ring, bx, QQ)
+
+    spow = leftRotate(ring, secretKey.sx, r)
+    leftShiftAndEqual!(spow, logQ, QQ)
+    bx = add(ring, bx, spow, QQ)
+
+    key = Key()
+    key.rax .= CRT(ring, ax, nprimes)
+    key.rbx .= CRT(ring, bx, nprimes)
+
+    push!(scheme.leftRotKeyMap, r => key)
+end
+
+
+function leftRotateFast(scheme::Scheme, cipher::Ciphertext, r::Int)
+
+    ring = scheme.ring
+
+    q = ring.qpows[cipher.logq+1]
+    qQ = ring.qpows[cipher.logq + logQ + 1]
+
+    cipher_res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
+
+    bxrot = leftRotate(ring, cipher.bx, r)
+    axrot = leftRotate(ring, cipher.ax, r)
+    key = scheme.leftRotKeyMap[r]
+    np = cld(cipher.logq + logQQ + logN + 2, 59)
+
+    rarot = CRT(ring, axrot, np)
+    cipher_res.ax .= multDNTT(ring, rarot, key.rax, np, qQ)
+    cipher_res.bx .= multDNTT(ring, rarot, key.rbx, np, qQ)
+
+    rightShiftAndEqual!(cipher_res.ax, logQ)
+    rightShiftAndEqual!(cipher_res.bx, logQ)
+
+    cipher_res.bx .= add(ring, cipher_res.bx, bxrot, q)
+
+    cipher_res
 end

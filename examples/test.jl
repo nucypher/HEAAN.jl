@@ -4,7 +4,8 @@ using HEAAN
 using HEAAN:
     Ring, SecretKey, MyRNG, Scheme, randomComplex, encryptSingle, decryptSingle,
     randomComplexArray, encrypt, hexfloat, decrypt,
-    add, mult, imult
+    add, mult, imult,
+    addLeftRotKey!, leftRotateFast
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -122,9 +123,38 @@ function testimult(logq::Int, logp::Int, logn::Int)
 end
 
 
+function testRotateFast(logq::Int, logp::Int, logn::Int, logr::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+
+    n = 2^logn
+    r = 2^logr
+
+    addLeftRotKey!(rng, scheme, secretKey, r)
+
+    mvec = randomComplexArray(rng, n)
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    cipher_res = leftRotateFast(scheme, cipher, r)
+
+    dvec = decrypt(scheme, secretKey, cipher_res)
+
+    mvec_rot = circshift(mvec, -r)
+
+    for i in 1:n
+        println(hexfloat(real(mvec_rot[i])), " ", hexfloat(real(dvec[i])))
+        println(hexfloat(imag(mvec_rot[i])), " ", hexfloat(imag(dvec[i])))
+    end
+end
+
 
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
 #testMult(100, 30, 4)
-testimult(100, 30, 4)
+#testimult(100, 30, 4)
+testRotateFast(100, 30, 4, 1)
