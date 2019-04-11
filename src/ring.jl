@@ -157,7 +157,7 @@ end
 function leftShiftAndEqual!(p::Array{BigInt, 1}, bits::Int, modulus::BigInt)
     for i in 0:N-1
         p[i+1] <<= bits
-        p[i+1] %= modulus
+        p[i+1] = mod(p[i+1], modulus)
     end
 end
 
