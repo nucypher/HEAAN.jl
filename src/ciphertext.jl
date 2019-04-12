@@ -14,3 +14,11 @@ struct Ciphertext
         new(ax, bx, logp, logq, n)
     end
 end
+
+
+function Base.copy(c::Ciphertext)
+    res = Ciphertext(c.logp, c.logq, c.n)
+    res.ax .= c.ax
+    res.bx .= c.bx
+    res
+end

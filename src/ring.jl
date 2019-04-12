@@ -382,3 +382,12 @@ function Base.mod(ring::Ring, p::Array{BigInt, 1}, modulus::BigInt)
     end
     res
 end
+
+
+function negate(ring::Ring, p::Array{BigInt, 1})
+    res = similar(p)
+    for i in 0:N-1
+        res[i+1] = -p[i+1]
+    end
+    res
+end

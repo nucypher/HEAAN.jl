@@ -8,7 +8,8 @@ using HEAAN:
     addLeftRotKey!, leftRotateFast,
     addConjKey!, conjugate,
     randomCircle, SchemeAlgo, powerOf2,
-    power
+    power,
+    inverse
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -248,6 +249,33 @@ function testPower(logq::Int, logp::Int, logn::Int, degree::Int)
     end
 end
 
+
+function testInverse(logq::Int, logp::Int, logn::Int, steps::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+    algo = SchemeAlgo(scheme)
+
+    n = 2^logn
+
+    mvec = [randomCircle(rng, 0.1) for i in 1:n]
+    minv = 1 ./ mvec
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    cinv = inverse(algo, cipher, logp, steps)
+
+    dinv = decrypt(scheme, secretKey, cinv)
+
+    for i in 1:n
+        println(hexfloat(real(minv[i])), " ", hexfloat(real(dinv[i])))
+        println(hexfloat(imag(minv[i])), " ", hexfloat(imag(dinv[i])))
+    end
+end
+
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
@@ -256,4 +284,5 @@ end
 #testRotateFast(100, 30, 4, 1)
 #testConjugate(100, 30, 4)
 #testPowerOf2(300, 30, 4, 4)
-testPower(300, 30, 4, 13)
+#testPower(300, 30, 4, 13)
+testInverse(300, 25, 4, 6)

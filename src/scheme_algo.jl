@@ -50,3 +50,24 @@ function power(algo::SchemeAlgo, cipher::Ciphertext, logp::Int, degree::Int)
     end
     res
 end
+
+
+function inverse(algo::SchemeAlgo, cipher::Ciphertext, logp::Int, steps::Int)
+    scheme = algo.scheme
+    cbar = negate(scheme, cipher)
+    cbar = addConst(scheme, cbar, 1.0, logp)
+    cpow = copy(cbar)
+    tmp = addConst(scheme, cbar, 1.0, logp)
+    tmp = modDownBy(scheme, tmp, logp)
+    res = copy(tmp)
+    for i in 1:steps-1
+        cpow = square(scheme, cpow)
+        cpow = reScaleBy(scheme, cpow, logp)
+        tmp = copy(cpow)
+        tmp = addConst(scheme, tmp, 1.0, logp)
+        tmp = mult(scheme, tmp, res)
+        tmp = reScaleBy(scheme, tmp, logp)
+        res = copy(tmp)
+    end
+    res
+end
