@@ -9,7 +9,8 @@ using HEAAN:
     addConjKey!, conjugate,
     randomCircle, SchemeAlgo, powerOf2,
     power,
-    inverse
+    inverse,
+    function_, functionLazy, LOGARITHM, EXPONENT, SIGMOID
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -276,6 +277,115 @@ function testInverse(logq::Int, logp::Int, logn::Int, steps::Int)
     end
 end
 
+
+function testLogarithm(logq::Int, logp::Int, logn::Int, degree::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+    algo = SchemeAlgo(scheme)
+
+    n = 2^logn
+
+    mvec = [randomComplex(rng, 0.1) for i in 1:n]
+    mlog = log.(mvec .+ 1)
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    clog = function_(algo, cipher, LOGARITHM, logp, degree)
+
+    dlog = decrypt(scheme, secretKey, clog)
+
+    for i in 1:n
+        println(hexfloat(real(mlog[i])), " ", hexfloat(real(dlog[i])))
+        println(hexfloat(imag(mlog[i])), " ", hexfloat(imag(dlog[i])))
+    end
+end
+
+
+function testExponent(logq::Int, logp::Int, logn::Int, degree::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+    algo = SchemeAlgo(scheme)
+
+    n = 2^logn
+
+    mvec = [randomComplex(rng) for i in 1:n]
+    mexp = exp.(mvec)
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    cexp = function_(algo, cipher, EXPONENT, logp, degree)
+
+    dexp = decrypt(scheme, secretKey, cexp)
+
+    for i in 1:n
+        println(hexfloat(real(mexp[i])), " ", hexfloat(real(dexp[i])))
+        println(hexfloat(imag(mexp[i])), " ", hexfloat(imag(dexp[i])))
+    end
+end
+
+
+function testSigmoid(logq::Int, logp::Int, logn::Int, degree::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+    algo = SchemeAlgo(scheme)
+
+    n = 2^logn
+
+    mvec = [randomComplex(rng) for i in 1:n]
+    msig = exp.(mvec) ./ (1 .+ exp.(mvec))
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    csig = function_(algo, cipher, SIGMOID, logp, degree)
+
+    dsig = decrypt(scheme, secretKey, csig)
+
+    for i in 1:n
+        println(hexfloat(real(msig[i])), " ", hexfloat(real(dsig[i])))
+        println(hexfloat(imag(msig[i])), " ", hexfloat(imag(dsig[i])))
+    end
+end
+
+
+function testSigmoidLazy(logq::Int, logp::Int, logn::Int, degree::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+    algo = SchemeAlgo(scheme)
+
+    n = 2^logn
+
+    mvec = [randomComplex(rng) for i in 1:n]
+    msig = exp.(mvec) ./ (1 .+ exp.(mvec))
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    csig = functionLazy(algo, cipher, SIGMOID, logp, degree)
+
+    dsig = decrypt(scheme, secretKey, csig)
+
+    for i in 1:n
+        println(hexfloat(real(msig[i])), " ", hexfloat(real(dsig[i])))
+        println(hexfloat(imag(msig[i])), " ", hexfloat(imag(dsig[i])))
+    end
+end
+
+
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
@@ -285,4 +395,8 @@ end
 #testConjugate(100, 30, 4)
 #testPowerOf2(300, 30, 4, 4)
 #testPower(300, 30, 4, 13)
-testInverse(300, 25, 4, 6)
+#testInverse(300, 25, 4, 6)
+#testLogarithm(300, 30, 4, 7)
+#testExponent(300, 30, 4, 7)
+#testSigmoid(300, 30, 4, 7)
+testSigmoidLazy(300, 30, 4, 7)

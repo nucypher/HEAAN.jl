@@ -397,6 +397,18 @@ function modDownBy(scheme::Scheme, cipher::Ciphertext, dlogq::Int)
 end
 
 
+function modDownTo(scheme::Scheme, cipher::Ciphertext, logq::Int)
+    ring = scheme.ring
+    q = ring.qpows[logq + 1]
+
+    res = Ciphertext(cipher.logp, logq, cipher.n)
+    res.ax .= mod(ring, cipher.ax, q)
+    res.bx .= mod(ring, cipher.bx, q)
+
+    res
+end
+
+
 function negate(scheme::Scheme, cipher::Ciphertext)
     ring = scheme.ring
     res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
@@ -412,5 +424,18 @@ function addConst(scheme::Scheme, cipher::Ciphertext, cnst::Float64, logp::Int)
     res = copy(cipher)
     cnstZZ = logp < 0 ? scaleUpToZZ(cnst, cipher.logp) : scaleUpToZZ(cnst, logp)
     res.bx[0+1] = AddMod(cipher.bx[0+1], cnstZZ, q)
+    res
+end
+
+
+function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Float64, logp::Int)
+    ring = scheme.ring
+    q = ring.qpows[cipher.logq + 1]
+    cnstZZ = scaleUpToZZ(cnst, logp)
+
+    res = Ciphertext(cipher.logp + logp, cipher.logq, cipher.n)
+    res.ax .= multByConst(ring, cipher.ax, cnstZZ, q)
+    res.bx .= multByConst(ring, cipher.bx, cnstZZ, q)
+
     res
 end

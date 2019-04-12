@@ -391,3 +391,12 @@ function negate(ring::Ring, p::Array{BigInt, 1})
     end
     res
 end
+
+
+function multByConst(ring::Ring, p::Array{BigInt, 1}, cnst::BigInt, modulus::BigInt)
+    res = similar(p)
+    for i in 0:N-1
+        res[i+1] = MulMod(p[i+1], cnst, modulus)
+    end
+    res
+end

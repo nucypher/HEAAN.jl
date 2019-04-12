@@ -27,6 +27,11 @@ function AddMod(x::BigInt, y::BigInt, q::BigInt)
 end
 
 
+function MulMod(x::BigInt, y::BigInt, q::BigInt)
+    mod(x * y, q)
+end
+
+
 function to_RR(x::Float64)
     BigFloat(x)
 end
