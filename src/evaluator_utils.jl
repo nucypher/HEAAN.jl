@@ -4,6 +4,12 @@ randomComplex(rng::MyRNG, bound::Float64 = 1.0) =
 randomComplexArray(rng::MyRNG, n::Int, bound::Float64 = 1.0) =
     [randomComplex(rng, bound) for i in 1:n]
 
+function randomCircle(rng::MyRNG, anglebound::Float64 = 1.0)
+    angle_ = randomReal(rng, anglebound)
+    M_PI = Float64(pi)
+    mycos(angle_ * 2 * M_PI) + im * mysin(angle_ * 2 * M_PI)
+end
+
 
 function scaleUpToZZ(x::Float64, logp::Int)
     scaleUpToZZ(to_RR(x), logp)

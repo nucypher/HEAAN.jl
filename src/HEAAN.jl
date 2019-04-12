@@ -106,5 +106,6 @@ include("key.jl")
 include("plaintext.jl")
 include("ciphertext.jl")
 include("scheme.jl")
+include("scheme_algo.jl")
 
 end

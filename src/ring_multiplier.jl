@@ -292,6 +292,12 @@ function multDNTT(
 end
 
 
+function squareNTT(rm::RingMultiplier, ra::Array{UInt64, 1}, np::Int, modulus::BigInt)
+    # TODO: can be optimized by writing a specialized version?
+    multDNTT(rm, ra, ra, np, modulus)
+end
+
+
 function addNTT(rm::RingMultiplier, ra::Array{UInt64, 1}, rb::Array{UInt64, 1}, np::Int)
     res = similar(ra)
     for i in 0:np-1

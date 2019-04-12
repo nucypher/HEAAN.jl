@@ -362,3 +362,8 @@ function conjugate(ring::Ring, p::Array{BigInt, 1})
     end
     res
 end
+
+
+function squareNTT(ring::Ring, ra::Array{UInt64, 1}, np::Int, q::BigInt)
+    squareNTT(ring.multiplier, ra, np, q)
+end

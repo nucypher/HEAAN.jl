@@ -6,7 +6,8 @@ using HEAAN:
     randomComplexArray, encrypt, hexfloat, decrypt,
     add, mult, imult,
     addLeftRotKey!, leftRotateFast,
-    addConjKey!, conjugate
+    addConjKey!, conjugate,
+    randomCircle, SchemeAlgo, powerOf2
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -181,10 +182,43 @@ function testConjugate(logq::Int, logp::Int, logn::Int)
 end
 
 
+function testPowerOf2(logq::Int, logp::Int, logn::Int, logdeg::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+    algo = SchemeAlgo(scheme)
+
+    n = 2^logn
+    degree = 2^logdeg
+
+    mvec = [randomCircle(rng) for i in 1:n]
+    # Temporary replacement for bit-to-bit compatibility with the reference implementation.
+    #mpow = mvec .^ degree
+    mpow = copy(mvec)
+    for i in 1:degree-1
+        mpow .*= mvec
+    end
+
+    cipher = encrypt(rng, scheme, mvec, n, logp, logq)
+
+    cpow = powerOf2(algo, cipher, logp, logdeg)
+
+    dpow = decrypt(scheme, secretKey, cpow)
+
+    for i in 1:n
+        println(hexfloat(real(mpow[i])), " ", hexfloat(real(dpow[i])))
+        println(hexfloat(imag(mpow[i])), " ", hexfloat(imag(dpow[i])))
+    end
+end
+
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
 #testMult(100, 30, 4)
 #testimult(100, 30, 4)
 #testRotateFast(100, 30, 4, 1)
-testConjugate(100, 30, 4)
+#testConjugate(100, 30, 4)
+testPowerOf2(300, 30, 4, 4)

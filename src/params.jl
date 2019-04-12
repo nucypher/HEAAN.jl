@@ -1,5 +1,5 @@
 const logN = 16
-const logQ = 100 # 1200
+const logQ = 300
 
 const sigma = 3.2
 const h = 64

@@ -332,3 +332,54 @@ function conjugate(scheme::Scheme, cipher::Ciphertext)
 
     cipher_res
 end
+
+
+function square(scheme::Scheme, cipher::Ciphertext)
+
+    # TODO: can be joined with mult()?
+
+    ring = scheme.ring
+
+    res = Ciphertext(cipher.logp * 2, cipher.logq, cipher.n)
+
+    q = ring.qpows[cipher.logq + 1]
+    qQ = ring.qpows[cipher.logq + logQ + 1]
+
+    np = cld(2 * cipher.logq + logN + 2, 59)
+
+    ra = CRT(ring, cipher.ax, np)
+    rb = CRT(ring, cipher.bx, np)
+
+    bxbx = squareNTT(ring, rb, np, q)
+    axax = squareNTT(ring, ra, np, q)
+    axbx = multDNTT(ring, ra, rb, np, q)
+    axbx = add(ring, axbx, axbx, q)
+
+    key = scheme.keyMap[MULTIPLICATION]
+
+    np = cld(cipher.logq + logQQ + logN + 2, 59)
+    raa = CRT(ring, axax, np)
+    res.ax .= multDNTT(ring, raa, key.rax, np, qQ)
+    res.bx .= multDNTT(ring, raa, key.rbx, np, qQ)
+
+    rightShiftAndEqual!(res.ax, logQ)
+    rightShiftAndEqual!(res.bx, logQ)
+
+    res.ax .= add(ring, res.ax, axbx, q)
+    res.bx .= add(ring, res.bx, bxbx, q)
+
+    res
+end
+
+
+function reScaleBy(scheme::Scheme, cipher::Ciphertext, dlogq::Int)
+
+    res = Ciphertext(cipher.logp - dlogq, cipher.logq - dlogq, cipher.n)
+
+    res.ax .= cipher.ax
+    res.bx .= cipher.bx
+    rightShiftAndEqual!(res.ax, dlogq)
+    rightShiftAndEqual!(res.bx, dlogq)
+
+    res
+end
