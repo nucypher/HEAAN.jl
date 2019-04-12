@@ -383,3 +383,15 @@ function reScaleBy(scheme::Scheme, cipher::Ciphertext, dlogq::Int)
 
     res
 end
+
+
+function modDownBy(scheme::Scheme, cipher::Ciphertext, dlogq::Int)
+    ring = scheme.ring
+    q = ring.qpows[cipher.logq - dlogq + 1]
+
+    res = Ciphertext(cipher.logp, cipher.logq - dlogq, cipher.n)
+    res.ax .= mod(ring, cipher.ax, q)
+    res.bx .= mod(ring, cipher.bx, q)
+
+    res
+end

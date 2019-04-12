@@ -181,7 +181,13 @@ end
 
 function rightShiftAndEqual!(p::Array{BigInt, 1}, bits::Int)
     for i in 0:N-1
-        p[i+1] >>= bits
+        if p[i+1] >= 0
+            p[i+1] = p[i+1] >> bits
+        else
+            # TODO: mimicking NTL (and C++?) behavior here.
+            # perhaps, can be removed if all the numbers are made positive.
+            p[i+1] = (p[i+1] >> bits) + 1
+        end
     end
 end
 
@@ -366,4 +372,13 @@ end
 
 function squareNTT(ring::Ring, ra::Array{UInt64, 1}, np::Int, q::BigInt)
     squareNTT(ring.multiplier, ra, np, q)
+end
+
+
+function Base.mod(ring::Ring, p::Array{BigInt, 1}, modulus::BigInt)
+    res = similar(p)
+    for i in 0:N-1
+        res[i+1] = mod(p[i+1], modulus)
+    end
+    res
 end

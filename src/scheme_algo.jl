@@ -30,3 +30,23 @@ function powerOf2(algo::SchemeAlgo, cipher::Ciphertext, logp::Int, logDegree::In
     end
     res
 end
+
+
+function power(algo::SchemeAlgo, cipher::Ciphertext, logp::Int, degree::Int)
+    logDegree = floor(Int, log2(degree))
+    po2Degree = 1 << logDegree
+
+    scheme = algo.scheme
+
+    res = powerOf2(algo, cipher, logp, logDegree)
+
+    remDegree = degree - po2Degree
+    if remDegree > 0
+        tmp = power(algo, cipher, logp, remDegree)
+        bitsDown = tmp.logq - res.logq
+        tmp = modDownBy(scheme, tmp, bitsDown)
+        res = mult(scheme, res, tmp)
+        res = reScaleBy(scheme, res, logp)
+    end
+    res
+end
