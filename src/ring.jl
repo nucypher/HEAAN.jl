@@ -105,8 +105,8 @@ function subFromGaussAndEqual(rng::MyRNG, ring::Ring, x::Array{BigInt, 1}, q::Bi
         theta = 2pi * r1
         rr = sqrt(-2.0 * log(r2)) * sigma
 
-        res[i+1] = AddMod(-x[i+1], floor(BigInt, rr * cos(theta) + 0.5), q)
-        res[i+2] = AddMod(-x[i+2], floor(BigInt, rr * sin(theta) + 0.5), q)
+        res[i+1] = AddMod(-x[i+1], floor(BigInt, rr * mycos(theta) + 0.5), q)
+        res[i+2] = AddMod(-x[i+2], floor(BigInt, rr * mysin(theta) + 0.5), q)
     end
 
     res
@@ -125,8 +125,8 @@ function addGaussAndEqual(rng, ring::Ring, x::Array{BigInt, 1}, q::BigInt)
         theta = 2pi * r1
         rr = sqrt(-2.0 * log(r2)) * sigma
 
-        res[i+1] = AddMod(x[i+1], floor(BigInt, rr * cos(theta) + 0.5), q)
-        res[i+2] = AddMod(x[i+2], floor(BigInt, rr * sin(theta) + 0.5), q)
+        res[i+1] = AddMod(x[i+1], floor(BigInt, rr * mycos(theta) + 0.5), q)
+        res[i+2] = AddMod(x[i+2], floor(BigInt, rr * mysin(theta) + 0.5), q)
     end
     res
 end
