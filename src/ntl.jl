@@ -14,13 +14,14 @@ end
 =#
 
 # TODO: the NTL AddMod() should only be applied to numbers in range 0...q-1.
-# In HEAAN, it is often applied to negative numbers and somehow works,
-# Even thougn in this case AddMod does not do anything.
+# In HEAAN, it is often applied to negative numbers, or numbers > q and somehow works,
+# Even thougn in this case AddMod does not do anything, or just subtracts q, respectively.
 # This function tries to imitate this behavior.
 function AddMod(x::BigInt, y::BigInt, q::BigInt)
     res = x + y
-    if res > 0
-        rem(res, q)
+    if res >= q
+        #rem(res, q)
+        res - q
     else
         res
     end
@@ -69,5 +70,11 @@ end
 
 function NumBits(x::BigInt)
     # TODO: slow, but works
-    ceil(Int, log2(x + one(BigInt)))
+    if iszero(x)
+        0
+    elseif x < 0
+        NumBits(-x)
+    else
+        ceil(Int, log2(x + one(BigInt)))
+    end
 end

@@ -1,7 +1,3 @@
-struct BootContext
-end
-
-
 struct Ring
 
     qpows :: Array{BigInt, 1}
@@ -186,7 +182,7 @@ function rightShiftAndEqual!(p::Array{BigInt, 1}, bits::Int)
         else
             # TODO: mimicking NTL (and C++?) behavior here.
             # perhaps, can be removed if all the numbers are made positive.
-            p[i+1] = (p[i+1] >> bits) + 1
+            p[i+1] = -((-p[i+1]) >> bits)
         end
     end
 end
@@ -399,4 +395,168 @@ function multByConst(ring::Ring, p::Array{BigInt, 1}, cnst::BigInt, modulus::Big
         res[i+1] = MulMod(p[i+1], cnst, modulus)
     end
     res
+end
+
+
+function maxBits(f::Array{BigInt, 1}, n::Int)
+    maximum(NumBits.(f))
+end
+
+
+function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
+    if haskey(ring.bootContextMap, logSlots)
+        return
+    end
+
+    slots = 1 << logSlots
+    dslots = slots << 1
+    logk = logSlots >> 1
+
+    k = 1 << logk
+    gap = Nh >> logSlots
+
+    rpvec = Array{Array{UInt64, 1}}(undef, slots)
+    rpvecInv = Array{Array{UInt64, 1}}(undef, slots)
+
+    bndvec = Array{Int}(undef, slots)
+    bndvecInv = Array{Int}(undef, slots)
+
+    pvec = Array{BigInt}(undef, N)
+    pvec .= 0
+    pvals = Array{Complex{Float64}}(undef, dslots)
+
+    c = 0.25 / pi
+
+    if logSlots < logNh
+        dgap = gap >> 1
+        for ki in 0:k:slots-1
+            for pos in ki:ki+k-1
+                for i in 0:slots-pos-1
+                    deg = ((M - ring.rotGroup[i + pos + 1]) * i * gap) % M
+                    pvals[i+1] = ring.ksiPows[deg + 1]
+                    pvals[i + slots + 1] = pvals[i+1] * im
+                end
+                for i in slots-pos:slots-1
+                    deg = ((M - ring.rotGroup[i + pos - slots + 1]) * i * gap) % M
+                    pvals[i + 1] = ring.ksiPows[deg + 1]
+                    pvals[i + slots + 1] = pvals[i + 1] * im
+                end
+                # TODO: check that this is equivalent to rightRotateAndEqual(pvals, dslots, ki)
+                pvals = circshift(pvals, ki)
+                pvals = EMBInv(ring, pvals, dslots)
+                for i in 0:dslots-1
+                    jdx = Nh + i * dgap
+                    idx = i * dgap
+                    pvec[idx + 1] = scaleUpToZZ(real(pvals[i + 1]), logp)
+                    pvec[jdx + 1] = scaleUpToZZ(imag(pvals[i + 1]), logp)
+                end
+                bndvec[pos + 1] = maxBits(pvec, N)
+                np = cld(bndvec[pos + 1] + logQ + 2 * logN + 2, 59)
+                rpvec[pos + 1] = CRT(ring, pvec, np)
+                for i in 0:N-1
+                    pvec[i + 1] = zero(BigInt)
+                end
+            end
+        end
+
+        for i in 0:slots-1
+            pvals[i + 1] = 0.0
+            pvals[i + slots + 1] = -c * im
+        end
+        pvals = EMBInv(ring, pvals, dslots)
+        for i in 0:dslots-1
+            idx = i * dgap
+            jdx = Nh + i * dgap
+            pvec[idx + 1] = scaleUpToZZ(real(pvals[i+1]), logp)
+            pvec[jdx + 1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+        end
+        bnd1 = maxBits(pvec, N)
+        np = cld(bnd1 + logQ + 2 * logN + 2, 59)
+        rp1 = CRT(ring, pvec, np)
+        for i in 0:N-1
+            pvec[i+1] = zero(BigInt)
+        end
+
+        for i in 0:slots-1
+            pvals[i + 1] = c
+            pvals[i + slots + 1] = 0
+        end
+
+        pvals = EMBInv(ring, pvals, dslots)
+        for i in 0:dslots-1
+            idx = i * dgap
+            jdx = Nh + i * dgap
+            pvec[idx+1] = scaleUpToZZ(real(pvals[i+1]), logp)
+            pvec[jdx+1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+        end
+        bnd2 = maxBits(pvec, N)
+        np = cld(bnd2 + logQ + 2 * logN + 2, 59)
+        rp2 = CRT(ring, pvec, np)
+        for i in 0:N-1
+            pvec[i+1] = zero(BigInt)
+        end
+    else
+        # TODO: need to test this branch
+        for ki in 0:k:slots-1
+            for pos in ki:ki+k-1
+                for i in 0:slots-pos-1
+                    deg = ((M - ring.rotGroup[i + pos + 1]) * i * gap) % M
+                    pvals[i+1] = ring.ksiPows[deg+1]
+                end
+                for i in slots-pos:slots-1
+                    deg = ((M - ring.rotGroup[i + pos - slots + 1]) * i * gap) % M
+                    pvals[i+1] = ring.ksiPows[deg]
+                end
+                # TODO: check that this is equivalent to rightRotateAndEqual(pvals, slots, ki)
+                # TODO: in the original it was `slots`, but length of `pvals` is `dslots` - bug?
+                pvals = vcat(circshift(pvals[1:slots], ki), pvals[slots+1:end])
+                pvals = EMBInv(ring, pvals, slots)
+                for i in 0:slots-1
+                    idx = i * gap
+                    jdx = Nh + i * gap
+                    pvec[idx+1] = scaleUpToZZ(real(pvals[i+1]), logp)
+                    pvec[jdx+1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+                end
+                bndvec[pos+1] = maxBits(pvec, N)
+                np = cld(bndvec[pos+1] + logQ + 2 * logN + 2, 59)
+                rpvec[pos+1] = CRT(ring, pvec, np)
+                for i in 0:N-1
+                    pvec[i+1] = zero(BigInt)
+                end
+            end
+        end
+
+    end
+
+    for ki in 0:k:slots-1
+        for pos in ki:ki+k-1
+            for i in 0:slots-pos-1
+                deg = (ring.rotGroup[i+1] * (i + pos) * gap) % M
+                pvals[i+1] = ring.ksiPows[deg+1]
+            end
+            for i in slots-pos:slots-1
+                deg = (ring.rotGroup[i+1] * (i + pos - slots) * gap) % M
+                pvals[i+1] = ring.ksiPows[deg+1]
+            end
+            # TODO: check that this is equivalent to rightRotateAndEqual(pvals, slots, ki)
+            # TODO: in the original it was `slots`, but length of `pvals` is `dslots` - bug?
+            pvals = vcat(circshift(pvals[1:slots], ki), pvals[slots+1:end])
+            pvals = EMBInv(ring, pvals, slots);
+            for i in 0:slots-1
+                idx = i * gap
+                jdx = Nh + i * gap
+                pvec[idx+1] = scaleUpToZZ(real(pvals[i+1]), logp)
+                pvec[jdx+1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+            end
+            bndvecInv[pos+1] = maxBits(pvec, N)
+            np = cld(bndvecInv[pos+1] + logQ + 2 * logN + 2, 59)
+            rpvecInv[pos+1] = CRT(ring, pvec, np)
+            for i in 0:N-1
+                pvec[i+1] = zero(BigInt)
+            end
+        end
+    end
+
+    ring.bootContextMap[logSlots] = BootContext(
+        rpvec, rpvecInv, rp1, rp2, bndvec, bndvecInv, bnd1, bnd2, logp)
 end

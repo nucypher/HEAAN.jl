@@ -10,7 +10,9 @@ using HEAAN:
     randomCircle, SchemeAlgo, powerOf2,
     power,
     inverse,
-    function_, functionLazy, LOGARITHM, EXPONENT, SIGMOID
+    function_, functionLazy, LOGARITHM, EXPONENT, SIGMOID,
+    addBootKey!, modDownTo, normalize, coeffToSlot, evalExp, slotToCoeff, divByPo2, Ciphertext,
+    logQ, logNh
 
 
 function testEncryptSingle(logq::Int, logp::Int)
@@ -386,6 +388,65 @@ function testSigmoidLazy(logq::Int, logp::Int, logn::Int, degree::Int)
 end
 
 
+using Serialization
+
+
+function testBootstrap(logq::Int, logp::Int, logSlots::Int, logT::Int)
+
+    rng = MyRNG(12345)
+
+    ring = Ring()
+    secretKey = SecretKey(rng, ring)
+    scheme = Scheme(rng, secretKey, ring)
+
+    addBootKey!(rng, scheme, secretKey, logSlots, logq + 4)
+
+    slots = 2^logSlots
+    mvec = randomComplexArray(rng, slots)
+
+    cipher = encrypt(rng, scheme, mvec, slots, logp, logq)
+
+    println("cipher logq before: ", cipher.logq)
+
+    cipher = modDownTo(scheme, cipher, logq)
+    cipher = normalize(scheme, cipher)
+
+    new_cipher = Ciphertext(logq + 4, logQ, cipher.n)
+    new_cipher.ax .= cipher.ax
+    new_cipher.bx .= cipher.bx
+    cipher = new_cipher
+
+    println("SubSum")
+    for i in logSlots:logNh-1
+        rot = leftRotateFast(scheme, cipher, (1 << i))
+        cipher = add(scheme, cipher, rot)
+    end
+    cipher = divByPo2(scheme, cipher, logNh)
+
+    println("CoeffToSlot")
+    cipher = coeffToSlot(scheme, cipher)
+
+    println("EvalExp")
+    cipher = evalExp(scheme, cipher, logT)
+
+    println("SlotToCoeff")
+    cipher = slotToCoeff(scheme, cipher)
+
+    new_cipher = Ciphertext(logp, cipher.logq, cipher.n)
+    new_cipher.ax .= cipher.ax
+    new_cipher.bx .= cipher.bx
+    cipher = new_cipher
+    println("cipher logq after: ", cipher.logq)
+
+    dvec = decrypt(scheme, secretKey, cipher)
+
+    for i in 1:slots
+        println(hexfloat(real(mvec[i])), " ", hexfloat(real(dvec[i])))
+        println(hexfloat(imag(mvec[i])), " ", hexfloat(imag(dvec[i])))
+    end
+end
+
+
 #testEncryptSingle(100, 30)
 #testEncrypt(100, 30, 4)
 #testAdd(100, 30, 4)
@@ -399,4 +460,10 @@ end
 #testLogarithm(300, 30, 4, 7)
 #testExponent(300, 30, 4, 7)
 #testSigmoid(300, 30, 4, 7)
-testSigmoidLazy(300, 30, 4, 7)
+#testSigmoidLazy(300, 30, 4, 7)
+
+logp = 20
+logq = logp + 10 # suppose the input ciphertext of bootstrapping has logq = logp + 10
+logn = 3
+logT = 4 # this means that we use Taylor approximation in [-1/T,1/T] with double angle fomula
+testBootstrap(logq, logp, logn, logT)

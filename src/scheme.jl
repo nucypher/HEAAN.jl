@@ -189,6 +189,15 @@ function add(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
+function sub(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
+    q = scheme.ring.qpows[cipher1.logq+1]
+    cipher_res = Ciphertext(cipher1.logp, cipher1.logq, cipher1.n)
+    cipher_res.ax .= sub(scheme.ring, cipher1.ax, cipher2.ax, q)
+    cipher_res.bx .= sub(scheme.ring, cipher1.bx, cipher2.bx, q)
+    cipher_res
+end
+
+
 function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
     res = Ciphertext(cipher1.logp + cipher2.logp, cipher1.logq, cipher1.n)
 
@@ -218,6 +227,7 @@ function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
     raa = CRT(ring, axax, np)
     res.ax .= multDNTT(ring, raa, key.rax, np, qQ)
     res.bx .= multDNTT(ring, raa, key.rbx, np, qQ)
+
     rightShiftAndEqual!(res.ax, logQ)
     rightShiftAndEqual!(res.bx, logQ)
 
@@ -234,6 +244,20 @@ function imult(scheme::Scheme, cipher::Ciphertext)
     res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
     res.ax .= multByMonomial(scheme.ring, cipher.ax, Nh)
     res.bx .= multByMonomial(scheme.ring, cipher.bx, Nh)
+    res
+end
+
+
+function multByPolyNTT(scheme::Scheme, cipher::Ciphertext, rpoly::Array{UInt64, 1}, bnd::Int, logp::Int)
+    ring = scheme.ring
+    q = ring.qpows[cipher.logq+1]
+
+    res = Ciphertext(cipher.logp + logp, cipher.logq, cipher.n)
+
+    np = cld(cipher.logq + bnd + logN + 2, 59)
+    res.ax .= multNTT(ring.multiplier, cipher.ax, rpoly, np, q)
+    res.bx .= multNTT(ring.multiplier, cipher.bx, rpoly, np, q)
+
     res
 end
 
@@ -259,6 +283,16 @@ function addLeftRotKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey, r::Int
 end
 
 
+function addLeftRotKeys!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey)
+    for i in 0:logN-2
+        idx = 1 << i
+        if !haskey(scheme.leftRotKeyMap, idx)
+            addLeftRotKey!(rng, scheme, secretKey, idx)
+        end
+    end
+end
+
+
 function leftRotateFast(scheme::Scheme, cipher::Ciphertext, r::Int)
 
     ring = scheme.ring
@@ -270,16 +304,20 @@ function leftRotateFast(scheme::Scheme, cipher::Ciphertext, r::Int)
 
     bxrot = leftRotate(ring, cipher.bx, r)
     axrot = leftRotate(ring, cipher.ax, r)
+
     key = scheme.leftRotKeyMap[r]
     np = cld(cipher.logq + logQQ + logN + 2, 59)
 
     rarot = CRT(ring, axrot, np)
+
     cipher_res.ax .= multDNTT(ring, rarot, key.rax, np, qQ)
     cipher_res.bx .= multDNTT(ring, rarot, key.rbx, np, qQ)
 
     rightShiftAndEqual!(cipher_res.ax, logQ)
     rightShiftAndEqual!(cipher_res.bx, logQ)
 
+    # TODO: Some of `bxrot` elements are >q here (in the original as well)
+    # Need to check and see where it is coming from.
     cipher_res.bx .= add(ring, cipher_res.bx, bxrot, q)
 
     cipher_res
@@ -418,7 +456,7 @@ function negate(scheme::Scheme, cipher::Ciphertext)
 end
 
 
-function addConst(scheme::Scheme, cipher::Ciphertext, cnst::Float64, logp::Int)
+function addConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, Float64}, logp::Int)
     ring = scheme.ring
     q = ring.qpows[cipher.logq + 1]
     res = copy(cipher)
@@ -428,7 +466,7 @@ function addConst(scheme::Scheme, cipher::Ciphertext, cnst::Float64, logp::Int)
 end
 
 
-function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Float64, logp::Int)
+function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, Float64}, logp::Int)
     ring = scheme.ring
     q = ring.qpows[cipher.logq + 1]
     cnstZZ = scaleUpToZZ(cnst, logp)
@@ -438,4 +476,262 @@ function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Float64, logp::In
     res.bx .= multByConst(ring, cipher.bx, cnstZZ, q)
 
     res
+end
+
+
+function addBootKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey, logl::Int, logp::Int)
+
+    ring = scheme.ring
+
+    addBootContext!(ring, logl, logp)
+    addConjKey!(rng, scheme, secretKey)
+    addLeftRotKeys!(rng, scheme, secretKey)
+
+    loglh = logl ÷ 2
+    k = 1 << loglh
+    m = 1 << (logl - loglh)
+
+    # TODO: isn't it what addLeftRotKeys!() does?
+    for i in 1:k-1
+        if !haskey(scheme.leftRotKeyMap, i)
+            addLeftRotKey!(rng, scheme, secretKey, i)
+        end
+    end
+
+    for i in 1:m-1
+        idx = i * k
+        if !haskey(scheme.leftRotKeyMap, idx)
+            addLeftRotKey!(rng, scheme, secretKey, idx)
+        end
+    end
+end
+
+
+function normalize(scheme::Scheme, cipher::Ciphertext)
+    q = scheme.ring.qpows[cipher.logq+1]
+    new_cipher = Ciphertext(cipher.logp, cipher.logq, cipher.n)
+    new_cipher.ax .= cipher.ax
+    new_cipher.bx .= cipher.bx
+    for i in 0:N-1
+        if NumBits(new_cipher.ax[i+1]) == new_cipher.logq
+            new_cipher.ax[i+1] -= q
+        end
+        if NumBits(new_cipher.bx[i+1]) == new_cipher.logq
+            new_cipher.bx[i+1] -= q
+        end
+    end
+    new_cipher
+end
+
+
+function divByPo2(scheme::Scheme, cipher::Ciphertext, bits::Int)
+    new_cipher = Ciphertext(cipher.logp, cipher.logq - bits, cipher.n)
+    new_cipher.ax .= cipher.ax
+    new_cipher.bx .= cipher.bx
+    rightShiftAndEqual!(new_cipher.ax, bits)
+    rightShiftAndEqual!(new_cipher.bx, bits)
+    new_cipher
+end
+
+
+function coeffToSlot(scheme::Scheme, cipher::Ciphertext)
+
+    ring = scheme.ring
+
+    slots = cipher.n
+    logSlots = floor(Int, log2(slots)) # TODO: check it's actually `floor` and not `round`
+    logk = logSlots ÷ 2
+    k = 1 << logk
+
+    rotvec = Array{Ciphertext}(undef, k)
+    rotvec[0+1] = copy(cipher)
+
+    for j in 0:k-2
+        rotvec[j+1+1] = leftRotateFast(scheme, rotvec[0+1], j + 1)
+    end
+
+    bootContext = ring.bootContextMap[logSlots]
+
+    tmpvec = Array{Ciphertext}(undef, k)
+
+    for j in 0:k-1
+        tmpvec[j+1] = multByPolyNTT(
+            scheme, rotvec[j+1], bootContext.rpvec[j+1], bootContext.bndvec[j+1], bootContext.logp)
+    end
+
+    for j in 1:k-1
+        tmpvec[0+1] = add(scheme, tmpvec[0+1], tmpvec[j+1])
+    end
+
+    cipher = copy(tmpvec[0+1])
+
+    for ki in k:k:slots-1
+        for j in 0:k-1
+            tmpvec[j+1] = multByPolyNTT(
+                scheme, rotvec[j+1], bootContext.rpvec[j+ki+1], bootContext.bndvec[j+ki+1],
+                bootContext.logp)
+        end
+        for j in 1:k-1
+            tmpvec[0+1] = add(scheme, tmpvec[0+1], tmpvec[j+1])
+        end
+        tmpvec[0+1] = leftRotateFast(scheme, tmpvec[0+1], ki)
+        cipher = add(scheme, cipher, tmpvec[0+1])
+    end
+    reScaleBy(scheme, cipher, bootContext.logp)
+end
+
+
+function slotToCoeff(scheme::Scheme, cipher::Ciphertext)
+    ring = scheme.ring
+
+    slots = cipher.n
+    logSlots = floor(Int, log2(slots)) # TODO: check hat it is actually floor and not round
+    logk = logSlots ÷ 2
+    k = 1 << logk
+
+    rotvec = Array{Ciphertext}(undef, k)
+    rotvec[0+1] = copy(cipher)
+
+    for j in 0:k-1-1
+        rotvec[j+1+1] = leftRotateFast(scheme, rotvec[0+1], j + 1)
+    end
+
+    bootContext = ring.bootContextMap[logSlots]
+
+    tmpvec = Array{Ciphertext}(undef, k)
+
+    for j in 0:k-1
+        tmpvec[j+1] = multByPolyNTT(
+            scheme, rotvec[j+1], bootContext.rpvecInv[j+1],
+            bootContext.bndvecInv[j+1], bootContext.logp)
+    end
+
+    for j in 1:k-1
+        tmpvec[0+1] = add(scheme, tmpvec[0+1], tmpvec[j+1])
+    end
+    cipher = copy(tmpvec[0+1])
+
+    for ki in k:k:slots-1
+        for j in 0:k-1
+            tmpvec[j+1] = multByPolyNTT(
+                scheme, rotvec[j+1], bootContext.rpvecInv[j+ki+1],
+                bootContext.bndvecInv[j+ki+1], bootContext.logp)
+        end
+
+        for j in 1:k-1
+            tmpvec[0+1] = add(scheme, tmpvec[0+1], tmpvec[j+1])
+        end
+
+        tmpvec[0+1] = leftRotateFast(scheme, tmpvec[0+1], ki)
+        cipher = add(scheme, cipher, tmpvec[0+1])
+    end
+    reScaleBy(scheme, cipher, bootContext.logp)
+end
+
+
+function exp2pi(scheme::Scheme, cipher::Ciphertext, logp::Int)
+    Pi = BigFloat(pi)
+
+    cipher2 = square(scheme, cipher)
+    cipher2 = reScaleBy(scheme, cipher2, logp) # cipher2.logq : logq - logp
+
+    cipher4 = square(scheme, cipher2)
+    cipher4 = reScaleBy(scheme, cipher4, logp) # cipher4.logq : logq -2logp
+    c = 1/(2 * Pi)
+    cipher01 = addConst(scheme, cipher, c, logp) # cipher01.logq : logq
+
+    c = 2*Pi
+    cipher01 = multByConst(scheme, cipher01, c, logp)
+    cipher01 = reScaleBy(scheme, cipher01, logp) # cipher01.logq : logq - logp
+
+    c = 3/(2*Pi)
+    cipher23 = addConst(scheme, cipher, c, logp) # cipher23.logq : logq
+
+    c = 4*Pi*Pi*Pi/3
+    cipher23 = multByConst(scheme, cipher23, c, logp)
+    cipher23 = reScaleBy(scheme, cipher23, logp) # cipher23.logq : logq - logp
+
+    cipher23 = mult(scheme, cipher23, cipher2)
+    cipher23 = reScaleBy(scheme, cipher23, logp) # cipher23.logq : logq - 2logp
+
+    cipher23 = add(scheme, cipher23, cipher01) # cipher23.logq : logq - 2logp
+
+    c = 5/(2*Pi)
+    cipher45 = addConst(scheme, cipher, c, logp) # cipher45.logq : logq
+
+    c = 4*Pi*Pi*Pi*Pi*Pi/15
+    cipher45 = multByConst(scheme, cipher45, c, logp)
+    cipher45 = reScaleBy(scheme, cipher45, logp) # cipher45.logq : logq - logp
+
+    c = 7/(2*Pi)
+    cipher = addConst(scheme, cipher, c, logp) # cipher.logq : logq
+
+    c = 8*Pi*Pi*Pi*Pi*Pi*Pi*Pi/315
+    cipher = multByConst(scheme, cipher, c, logp)
+    cipher = reScaleBy(scheme, cipher, logp) # cipher.logq : logq - logp
+
+    cipher = mult(scheme, cipher, cipher2)
+    cipher = reScaleBy(scheme, cipher, logp) # cipher.logq : logq - 2logp
+
+    cipher45 = modDownBy(scheme, cipher45, logp) # cipher45.logq : logq - 2logp
+    cipher = add(scheme, cipher, cipher45) # cipher.logq : logq - 2logp
+
+    cipher = mult(scheme, cipher, cipher4)
+    cipher = reScaleBy(scheme, cipher, logp) # cipher.logq : logq - 3logp
+
+    cipher23 = modDownBy(scheme, cipher23, logp)
+    cipher = add(scheme, cipher, cipher23) # cipher.logq : logq - 3logp
+
+    cipher
+end
+
+
+function evalExp(scheme::Scheme, cipher::Ciphertext, logT::Int, logI::Int=4)
+    ring = scheme.ring
+    slots = cipher.n
+    logSlots = floor(Int, log2(slots)) # TODO: check that it is actually floor and not round
+    bootContext = ring.bootContextMap[logSlots]
+    if logSlots < logNh
+        tmp = conjugate(scheme, cipher)
+        cipher = sub(scheme, cipher, tmp)
+        cipher = divByPo2(scheme, cipher, logT + 1) # bitDown: logT + 1
+        cipher = exp2pi(scheme, cipher, bootContext.logp) # bitDown: logT + 1 + 3(logq + logI)
+        for i in 0:logI+logT-1
+            cipher = square(scheme, cipher)
+            cipher = reScaleBy(scheme, cipher, bootContext.logp)
+        end
+        tmp = conjugate(scheme, cipher)
+        cipher = sub(scheme, cipher, tmp)
+        tmp = multByPolyNTT(scheme, cipher, bootContext.rp1, bootContext.bnd1, bootContext.logp)
+        tmprot = leftRotateFast(scheme, tmp, slots)
+        tmp = add(scheme, tmp, tmprot)
+        cipher = multByPolyNTT(scheme, cipher, bootContext.rp2, bootContext.bnd2, bootContext.logp)
+        tmprot = leftRotateFast(scheme, cipher, slots)
+        cipher = add(scheme, cipher, tmprot)
+        cipher = add(scheme, cipher, tmp)
+    else # TODO: check this branch
+        tmp = conjugate(scheme, cipher)
+        c2 = sub(scheme, cipher, tmp)
+        cipher = add(scheme, cipher, tmp)
+        cipher = imult(scheme, cipher)
+        cihper = divByPo2(scheme, cipher, logT + 1) # cipher bitDown: logT + 1
+        c2 = reScaleBy(scheme, c2, logT + 1) # c2 bitDown: logT + 1
+        cipher = exp2pi(scheme, cipher, bootContext.logp) # cipher bitDown: logT + 1 + 3(logq + logI)
+        c2 = exp2pi(scheme, c2, bootContext.logp) # c2 bitDown: logT + 1 + 3(logq + logI)
+        for i in 0:logI+logT-1
+            c2 = square(scheme, c2)
+            cipher = square(scheme, cipher)
+            c2 = reScaleBy(scheme, c2, bootContext.logp)
+            cipher = reScaleBy(scheme, cipher, bootContext.logp)
+        end
+        tmp = conjugate(scheme, c2)
+        c2 = sub(scheme, c2, tmp)
+        tmp = conjugate(scheme, cipher)
+        cipher = sub(scheme, cipher, tmp)
+        cipher = imult(scheme, cipher)
+        cipher = sub(scheme, c2, cipher)
+        c = 0.25/Pi
+        cipher = multByConst(scheme, cipher, c, bootContext.logp)
+    end
+    reScaleBy(scheme, cipher, bootContext.logp + logI)
 end
