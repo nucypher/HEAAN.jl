@@ -277,8 +277,8 @@ function encode(ring::Ring, mx::Array{BigInt, 1}, vals::Array{Complex{Float64}, 
     for i in 0:slots-1
         jdx = Nh + i * gap
         idx = i * gap
-        mx[idx+1] = scaleUpToZZ(real(uvals[i+1]), logp)
-        mx[jdx+1] = scaleUpToZZ(imag(uvals[i+1]), logp)
+        mx[idx+1] = float_to_integer(real(uvals[i+1]), logp)
+        mx[jdx+1] = float_to_integer(imag(uvals[i+1]), logp)
     end
 end
 
@@ -293,17 +293,24 @@ function decode(ring::Ring, mx::Array{BigInt, 1}, slots::Int, logp::Int, logq::I
     for i in 0:slots-1
         idx = i * gap
         tmp = mod(mx[idx+1], q)
-        # TODO: if q is a power of 2 (which it always is?), these checks are unnecessary
-        if NumBits(tmp) == logq
+
+        # Brings `tmp` to the range [-q/2, q/2]
+        if num_bits(tmp) == logq
+            #println((tmp, logq, q, num_bits(tmp)))
             tmp -= q
         end
-        vr = scaleDownToReal(tmp, logp)
+
+        vr = integer_to_float(Float64, tmp, logp)
 
         tmp = mod(mx[idx + Nh + 1], q)
-        if NumBits(tmp) == logq
+
+        # Brings `tmp` to the range [-q/2, q/2]
+        if num_bits(tmp) == logq
+            #println((tmp, logq, q, num_bits(tmp)))
             tmp -= q
         end
-        vi = scaleDownToReal(tmp, logp)
+
+        vi = integer_to_float(Float64, tmp, logp)
 
         vals[i+1] = vr + im * vi
     end
@@ -399,7 +406,7 @@ end
 
 
 function maxBits(f::Array{BigInt, 1}, n::Int)
-    maximum(NumBits.(f))
+    maximum(num_bits.(f))
 end
 
 
@@ -447,8 +454,8 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
                 for i in 0:dslots-1
                     jdx = Nh + i * dgap
                     idx = i * dgap
-                    pvec[idx + 1] = scaleUpToZZ(real(pvals[i + 1]), logp)
-                    pvec[jdx + 1] = scaleUpToZZ(imag(pvals[i + 1]), logp)
+                    pvec[idx + 1] = float_to_integer(real(pvals[i + 1]), logp)
+                    pvec[jdx + 1] = float_to_integer(imag(pvals[i + 1]), logp)
                 end
                 bndvec[pos + 1] = maxBits(pvec, N)
                 np = cld(bndvec[pos + 1] + logQ + 2 * logN + 2, 59)
@@ -467,8 +474,8 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
         for i in 0:dslots-1
             idx = i * dgap
             jdx = Nh + i * dgap
-            pvec[idx + 1] = scaleUpToZZ(real(pvals[i+1]), logp)
-            pvec[jdx + 1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+            pvec[idx + 1] = float_to_integer(real(pvals[i+1]), logp)
+            pvec[jdx + 1] = float_to_integer(imag(pvals[i+1]), logp)
         end
         bnd1 = maxBits(pvec, N)
         np = cld(bnd1 + logQ + 2 * logN + 2, 59)
@@ -486,8 +493,8 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
         for i in 0:dslots-1
             idx = i * dgap
             jdx = Nh + i * dgap
-            pvec[idx+1] = scaleUpToZZ(real(pvals[i+1]), logp)
-            pvec[jdx+1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+            pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp)
+            pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp)
         end
         bnd2 = maxBits(pvec, N)
         np = cld(bnd2 + logQ + 2 * logN + 2, 59)
@@ -514,8 +521,8 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
                 for i in 0:slots-1
                     idx = i * gap
                     jdx = Nh + i * gap
-                    pvec[idx+1] = scaleUpToZZ(real(pvals[i+1]), logp)
-                    pvec[jdx+1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+                    pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp)
+                    pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp)
                 end
                 bndvec[pos+1] = maxBits(pvec, N)
                 np = cld(bndvec[pos+1] + logQ + 2 * logN + 2, 59)
@@ -545,8 +552,8 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
             for i in 0:slots-1
                 idx = i * gap
                 jdx = Nh + i * gap
-                pvec[idx+1] = scaleUpToZZ(real(pvals[i+1]), logp)
-                pvec[jdx+1] = scaleUpToZZ(imag(pvals[i+1]), logp)
+                pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp)
+                pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp)
             end
             bndvecInv[pos+1] = maxBits(pvec, N)
             np = cld(bndvecInv[pos+1] + logQ + 2 * logN + 2, 59)

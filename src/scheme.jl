@@ -77,7 +77,7 @@ end
 
 function encodeSingle(val::Float64, logp::Int, logq::Int)
     p = Plaintext(logp, logq, 1)
-    p.mx[0+1] = scaleUpToZZ(val, logp + logQ)
+    p.mx[0+1] = float_to_integer(val, logp + logQ)
     p
 end
 
@@ -85,8 +85,8 @@ end
 function encodeSingle(val::Complex{Float64}, logp::Int, logq::Int)
     p = Plaintext(logp, logq, 1)
     p.mx .= 0 # TODO: it seems that in the C++ version this happens automatically
-    p.mx[0+1] = scaleUpToZZ(real(val), logp + logQ)
-    p.mx[Nh+1] = scaleUpToZZ(imag(val), logp + logQ)
+    p.mx[0+1] = float_to_integer(real(val), logp + logQ)
+    p.mx[Nh+1] = float_to_integer(imag(val), logp + logQ)
     p
 end
 
@@ -160,16 +160,16 @@ function decodeSingle(ring::Ring, plain::Plaintext)
     q = ring.qpows[plain.logq+1]
 
     tmp = plain.mx[0+1] % q
-    if NumBits(tmp) == plain.logq
+    if num_bits(tmp) == plain.logq
         tmp -= q
     end
-    r = scaleDownToReal(tmp, plain.logp)
+    r = integer_to_float(Float64, tmp, plain.logp)
 
     tmp = plain.mx[Nh+1] % q
-    if NumBits(tmp) == plain.logq
+    if num_bits(tmp) == plain.logq
         tmp -= q
     end
-    i = scaleDownToReal(tmp, plain.logp)
+    i = integer_to_float(Float64, tmp, plain.logp)
 
     r + im * i
 end
@@ -460,7 +460,7 @@ function addConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, Floa
     ring = scheme.ring
     q = ring.qpows[cipher.logq + 1]
     res = copy(cipher)
-    cnstZZ = logp < 0 ? scaleUpToZZ(cnst, cipher.logp) : scaleUpToZZ(cnst, logp)
+    cnstZZ = logp < 0 ? float_to_integer(cnst, cipher.logp) : float_to_integer(cnst, logp)
     res.bx[0+1] = AddMod(cipher.bx[0+1], cnstZZ, q)
     res
 end
@@ -469,7 +469,7 @@ end
 function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, Float64}, logp::Int)
     ring = scheme.ring
     q = ring.qpows[cipher.logq + 1]
-    cnstZZ = scaleUpToZZ(cnst, logp)
+    cnstZZ = float_to_integer(cnst, logp)
 
     res = Ciphertext(cipher.logp + logp, cipher.logq, cipher.n)
     res.ax .= multByConst(ring, cipher.ax, cnstZZ, q)
@@ -513,10 +513,10 @@ function normalize(scheme::Scheme, cipher::Ciphertext)
     new_cipher.ax .= cipher.ax
     new_cipher.bx .= cipher.bx
     for i in 0:N-1
-        if NumBits(new_cipher.ax[i+1]) == new_cipher.logq
+        if num_bits(new_cipher.ax[i+1]) == new_cipher.logq
             new_cipher.ax[i+1] -= q
         end
-        if NumBits(new_cipher.bx[i+1]) == new_cipher.logq
+        if num_bits(new_cipher.bx[i+1]) == new_cipher.logq
             new_cipher.bx[i+1] -= q
         end
     end

@@ -98,6 +98,7 @@ end
 
 include("params.jl")
 include("ntl.jl")
+include("float.jl")
 include("evaluator_utils.jl")
 include("ring_multiplier.jl")
 include("bootcontext.jl")
