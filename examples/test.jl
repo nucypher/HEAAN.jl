@@ -462,8 +462,6 @@ end
 #testSigmoid(300, 30, 4, 7)
 #testSigmoidLazy(300, 30, 4, 7)
 
-logp = 20
-logq = logp + 10 # suppose the input ciphertext of bootstrapping has logq = logp + 10
-logn = 3
-logT = 4 # this means that we use Taylor approximation in [-1/T,1/T] with double angle fomula
-testBootstrap(logq, logp, logn, logT)
+# !!! Requires logQ = 600 set in params.jl
+# logT=4 means that we use Taylor approximation in [-1/T,1/T] with double angle fomula
+testBootstrap(30, 20, 3, 4)
