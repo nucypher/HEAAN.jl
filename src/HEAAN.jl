@@ -49,6 +49,8 @@ function myrand_float(rng::MyRNG)
 end
 
 
+# FIXME: seems that it can be replaced just by an array of random bools -
+# that's how it is used in the code.
 function myRandomBits_ZZ(rng::MyRNG, len::Int)
     res = zero(BigInt)
     shift = 0
