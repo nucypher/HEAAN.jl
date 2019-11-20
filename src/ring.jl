@@ -176,7 +176,9 @@ end
 
 
 function rightShiftAndEqual!(p::Array{BigInt, 1}, bits::Int)
+    tmp = one(BigInt) << (bits - 1)
     for i in 0:N-1
+        p[i+1] += tmp
         if p[i+1] >= 0
             p[i+1] = p[i+1] >> bits
         else
