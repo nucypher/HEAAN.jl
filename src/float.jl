@@ -97,7 +97,7 @@ function integer_to_float(::Type{V}, x::Integer, shift::Int) where V <: Base.IEE
     n = num_bits(x)
     e = n - 1 - shift + exponent_bias(V)
 
-    if e < 0
+    if x == 0 || e < 0
         return zero(V)
     end
 
