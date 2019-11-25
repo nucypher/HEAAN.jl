@@ -17,3 +17,10 @@ const Nnprimes = nprimes << logN
 const bignum = Int(0xfffffff)
 const Q = BigInt(1) << logQ
 const QQ = BigInt(1) << logQQ
+
+
+function check_range(x::Array{BigInt, 1}, logq::Int)
+    @assert !any(signbit.(x))
+    nbs = maximum(num_bits.(x))
+    @assert nbs == logq "max nbs = $nbs, with logq = $logq"
+end

@@ -329,12 +329,18 @@ function addConjKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey)
 
     np = cld(1 + logQQ + logN + 2, 59)
     ax = sampleUniform2(rng, logQQ)
+    check_range(ax, logQQ)
     bx = mult(ring, secretKey.sx, ax, np, QQ)
+    check_range(bx, logQQ)
     bx = subFromGaussAndEqual(rng, ring, bx, QQ)
+    check_range(bx, logQQ)
 
-    sxconj = conjugate(ring, secretKey.sx)
+    sxconj = conjugate(ring, secretKey.sx, QQ, true)
+    check_range(sxconj, logQQ)
     leftShiftAndEqual!(sxconj, logQ, QQ)
+    check_range(sxconj, logQQ)
     bx = add(ring, bx, sxconj, QQ)
+    check_range(bx, logQQ)
 
     key = Key()
     key.rax .= CRT(ring, ax, nprimes)
@@ -353,8 +359,11 @@ function conjugate(scheme::Scheme, cipher::Ciphertext)
 
     cipher_res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
 
-    bxconj = conjugate(ring, cipher.bx)
-    axconj = conjugate(ring, cipher.ax)
+    check_range(cipher.ax, cipher.logq)
+    check_range(cipher.bx, cipher.logq)
+
+    bxconj = conjugate(ring, cipher.bx, one(BigInt) << cipher.logq, true)
+    axconj = conjugate(ring, cipher.ax, one(BigInt) << cipher.logq)
 
     key = scheme.keyMap[CONJUGATION]
 
@@ -363,10 +372,17 @@ function conjugate(scheme::Scheme, cipher::Ciphertext)
     cipher_res.ax .= multDNTT(ring, raconj, key.rax, np, qQ)
     cipher_res.bx .= multDNTT(ring, raconj, key.rbx, np, qQ)
 
+    check_range(cipher_res.ax, cipher.logq + logQ)
+    check_range(cipher_res.bx, cipher.logq + logQ)
+
     rightShiftAndEqual!(cipher_res.ax, logQ)
     rightShiftAndEqual!(cipher_res.bx, logQ)
 
+    check_range(cipher_res.ax, cipher.logq)
+    check_range(cipher_res.bx, cipher.logq)
+
     cipher_res.bx .= add(ring, cipher_res.bx, bxconj, q)
+    check_range(cipher_res.bx, cipher.logq)
 
     cipher_res
 end

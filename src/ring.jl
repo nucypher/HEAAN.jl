@@ -41,10 +41,11 @@ function sampleHWT(rng::MyRNG, ring::Ring)
     idx = 0
     tmp = myRandomBits_ZZ(rng, h)
     #println("Sampled: $tmp")
+    q = one(BigInt) << logQQ
     while idx < h
         i = myRandomBits_long(rng, logN)
         if res[i+1] == 0
-            res[i+1] = (tmp & (one(BigInt) << idx) == 0) ? one(BigInt) : (-one(BigInt))
+            res[i+1] = (tmp & (one(BigInt) << idx) == 0) ? one(BigInt) : (q - one(BigInt))
             #println("Filling position $i with $(res[i+1])")
             idx += 1
         end
@@ -64,6 +65,12 @@ function zero_high_bits(x::MPNumber{N, T}, l::Int) where {N, T}
     else
         Base.setindex(x, (x[N] << l) >> l, N)
     end
+end
+
+
+function zero_high_bits(x::BigInt, l::Int) where {N, T}
+    @assert !signbit(x)
+    x & ((one(BigInt) << l) - one(BigInt))
 end
 
 
@@ -90,6 +97,8 @@ end
 
 function subFromGaussAndEqual(rng::MyRNG, ring::Ring, x::Array{BigInt, 1}, q::BigInt)
 
+    # x is in range [0, q)
+
     bignum = Int(0xfffffff)
 
     res = similar(x)
@@ -101,8 +110,21 @@ function subFromGaussAndEqual(rng::MyRNG, ring::Ring, x::Array{BigInt, 1}, q::Bi
         theta = 2pi * r1
         rr = sqrt(-2.0 * log(r2)) * sigma
 
-        res[i+1] = AddMod(-x[i+1], floor(BigInt, rr * mycos(theta) + 0.5), q)
-        res[i+2] = AddMod(-x[i+2], floor(BigInt, rr * mysin(theta) + 0.5), q)
+        y1 = floor(BigInt, rr * mycos(theta) + 0.5)
+        y2 = floor(BigInt, rr * mysin(theta) + 0.5)
+
+        if signbit(y1)
+            y1 = q + y1
+        end
+        if signbit(y2)
+            y2 = q + y2
+        end
+
+        x1 = NegMod(x[i+1], q)
+        x2 = NegMod(x[i+2], q)
+
+        res[i+1] = AddMod(x1, y1, q)
+        res[i+2] = AddMod(x2, y2, q)
     end
 
     res
@@ -151,9 +173,10 @@ end
 
 
 function leftShiftAndEqual!(p::Array{BigInt, 1}, bits::Int, modulus::BigInt)
+    logq = trailing_zeros(modulus)
     for i in 0:N-1
         p[i+1] <<= bits
-        p[i+1] = mod(p[i+1], modulus)
+        p[i+1] = zero_high_bits(p[i+1], logq)
     end
 end
 
@@ -365,11 +388,11 @@ function leftRotate(ring::Ring, p::Array{BigInt, 1}, r::Int)
 end
 
 
-function conjugate(ring::Ring, p::Array{BigInt, 1})
+function conjugate(ring::Ring, p::Array{BigInt, 1}, q::BigInt, keep_positive::Bool=false)
     res = similar(p)
     res[0+1] = p[0+1]
     for i in 1:N-1
-        res[i+1] = -p[N - i + 1]
+        res[i+1] = keep_positive ? NegMod(p[N - i + 1], q) : -p[N - i + 1]
     end
     res
 end
