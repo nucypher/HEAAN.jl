@@ -11,5 +11,5 @@ function randomCircle(rng::MyRNG, anglebound::Float64 = 1.0)
 end
 
 
-float_to_integer(x::Union{BigFloat, Float64}, shift::Int) =
-    float_to_integer(BigInt, x, shift)
+float_to_integer(x::Union{BigFloat, Float64}, shift::Int, log_full::Int) =
+    float_to_integer(BigInt, x, shift, log_full)

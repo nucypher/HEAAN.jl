@@ -296,14 +296,14 @@ function EMB(ring::Ring, vals::Array{Complex{Float64}, 1}, n::Int)
 end
 
 
-function encode(ring::Ring, mx::Array{BigInt, 1}, vals::Array{Complex{Float64}, 1}, slots::Int, logp::Int)
+function encode(ring::Ring, mx::Array{BigInt, 1}, vals::Array{Complex{Float64}, 1}, slots::Int, logp::Int, log_full::Int)
     gap = Nh ÷ slots
     uvals = EMBInv(ring, vals, slots)
     for i in 0:slots-1
         jdx = Nh + i * gap
         idx = i * gap
-        mx[idx+1] = float_to_integer(real(uvals[i+1]), logp)
-        mx[jdx+1] = float_to_integer(imag(uvals[i+1]), logp)
+        mx[idx+1] = float_to_integer(real(uvals[i+1]), logp, log_full)
+        mx[jdx+1] = float_to_integer(imag(uvals[i+1]), logp, log_full)
     end
 end
 

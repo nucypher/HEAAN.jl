@@ -11,7 +11,7 @@ mantissa(x::T) where T <: Base.IEEEFloat =
 """
 Returns `x * 2^shift` rounded to an integer.
 """
-function float_to_integer(::Type{V}, x::T, shift::Int) where {V <: Integer, T <: Base.IEEEFloat}
+function float_to_integer(::Type{V}, x::T, shift::Int, log_full::Int) where {V <: Integer, T <: Base.IEEEFloat}
 
     if iszero(x)
         # `exponent()` does not work for x=0
@@ -51,7 +51,7 @@ function float_to_integer(::Type{V}, x::T, shift::Int) where {V <: Integer, T <:
         r += one(V)
     end
 
-    signbit(x) ? -r : r
+    signbit(x) ? (one(BigInt) << log_full) - r : r
 end
 
 

@@ -77,7 +77,7 @@ end
 
 function encodeSingle(val::Float64, logp::Int, logq::Int)
     p = Plaintext(logp, logq, 1)
-    p.mx[0+1] = float_to_integer(val, logp + logQ)
+    p.mx[0+1] = float_to_integer(val, logp + logQ, logq + logQ)
     p
 end
 
@@ -85,8 +85,8 @@ end
 function encodeSingle(val::Complex{Float64}, logp::Int, logq::Int)
     p = Plaintext(logp, logq, 1)
     p.mx .= 0 # TODO: it seems that in the C++ version this happens automatically
-    p.mx[0+1] = float_to_integer(real(val), logp + logQ)
-    p.mx[Nh+1] = float_to_integer(imag(val), logp + logQ)
+    p.mx[0+1] = float_to_integer(real(val), logp + logQ, logq + logQ)
+    p.mx[Nh+1] = float_to_integer(imag(val), logp + logQ, logq + logQ)
     p
 end
 
@@ -102,7 +102,7 @@ function encode(scheme::Scheme, vals::Array{Complex{Float64}, 1}, n::Int, logp::
     p = Plaintext(logp, logq, n)
     p.mx .= 0
     # TODO: note that it only fills certain indices, not the whole array
-    encode(scheme.ring, p.mx, vals, n, logp + logQ)
+    encode(scheme.ring, p.mx, vals, n, logp + logQ, logq + logQ)
     p
 end
 
