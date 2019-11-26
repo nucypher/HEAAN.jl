@@ -510,6 +510,51 @@ function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, F
 end
 
 
+function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Complex{Float64}, logp::Int)
+    ring = scheme.ring
+    q = ring.qpows[cipher.logq + 1]
+    cnstZZReal = float_to_integer(real(cnst), logp, cipher.logq)
+    cnstZZImag = float_to_integer(imag(cnst), logp, cipher.logq)
+
+    tmp = Ciphertext(cipher.logp, cipher.logq, cipher.n)
+    tmp.ax .= multByConst(ring, cipher.ax, cnstZZImag, q)
+    tmp.bx .= multByConst(ring, cipher.bx, cnstZZImag, q)
+    tmp.ax .= multByMonomial(ring, tmp.ax, N ÷ 2)
+    tmp.bx .= multByMonomial(ring, tmp.bx, N ÷ 2)
+
+    res = Ciphertext(cipher.logp + logp, cipher.logq, cipher.n)
+    res.ax .= multByConst(ring, cipher.ax, cnstZZReal, q)
+    res.bx .= multByConst(ring, cipher.bx, cnstZZReal, q)
+    addAndEqual!(res.ax, tmp.ax, QQ)
+    addAndEqual!(res.bx, tmp.bx, QQ)
+
+    res
+end
+
+
+function multByConstVec(scheme::Scheme, cipher::Ciphertext, cnstVec::Array{Complex{Float64}, 1}, logp::Int)
+    slots = cipher.n
+    cnstPoly = Array{BigInt}(undef, N)
+    encode(ring, cnstPoly, cnstVec, slots, logp)
+    multByPoly(scheme, cipher, cnstPoly, logp)
+end
+
+
+function multByPoly(scheme::Scheme, cipher::Ciphertext, poly::Array{BigInt, 1}, logp::Int)
+    ring = scheme.ring
+    q = ring.qpows[cipher.logq + 1]
+    res = Ciphertext(cipher.logp + logp, cipher.logq, cipher.n)
+
+    bnd = maxBits(poly, N)
+    np = cld(cipher.logq + bnd + logN + 2, pbnd)
+    rpoly = CRT(ring, poly, np, cipher.logq)
+    res.ax .= multNTT(ring.multiplier, cipher.ax, rpoly, np, q)
+    res.bx .= multNTT(ring.multiplier, cipher.bx, rpoly, np, q)
+
+    res
+end
+
+
 function addBootKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey, logl::Int, logp::Int)
 
     ring = scheme.ring
