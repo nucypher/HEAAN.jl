@@ -16,6 +16,14 @@ struct Ciphertext
 end
 
 
+
+function check_range(x::Ciphertext)
+    check_range(x.ax, x.logq)
+    check_range(x.bx, x.logq)
+end
+
+
+
 function Base.copy(c::Ciphertext)
     res = Ciphertext(c.logp, c.logq, c.n)
     res.ax .= c.ax

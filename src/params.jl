@@ -22,5 +22,13 @@ const QQ = BigInt(1) << logQQ
 function check_range(x::Array{BigInt, 1}, logq::Int)
     @assert !any(signbit.(x))
     nbs = maximum(num_bits.(x))
-    @assert nbs == logq "max nbs = $nbs, with logq = $logq"
+    @assert nbs <= logq
+    #@assert nbs == logq "max nbs = $nbs, with logq = $logq"
 end
+
+
+function is_negative(x::BigInt, logq::Int)
+    @assert !signbit(x)
+    bit(x, logq - 1)
+end
+

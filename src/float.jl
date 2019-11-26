@@ -51,15 +51,18 @@ function float_to_integer(::Type{V}, x::T, shift::Int, log_full::Int) where {V <
         r += one(V)
     end
 
+    @assert num_bits(r) < log_full
+
     signbit(x) ? (one(BigInt) << log_full) - r : r
 end
 
 
-function float_to_integer(::Type{V}, x::BigFloat, shift::Int) where V <: Integer
+function float_to_integer(::Type{V}, x::BigFloat, shift::Int, log_full::Int) where V <: Integer
     xc = copy(x)
     xc.exp += shift
     xi = round(BigInt, xc)
-    convert(V, xi)
+    res = convert(V, xi)
+    signbit(xi) ? (one(BigInt) << log_full) + res : res
 end
 
 

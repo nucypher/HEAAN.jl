@@ -150,12 +150,22 @@ function addGaussAndEqual(rng, ring::Ring, x::Array{BigInt, 1}, q::BigInt)
 end
 
 
-function CRT(ring::Ring, x::Array{BigInt, 1}, np::Int)
+function CRT(ring::Ring, x::Array{BigInt, 1}, np::Int, logq::Int)
+    # logq is the size of `x`
+
+    @assert !any(signbit.(x))
+    mm = one(BigInt) << logq
 
     res = Array{UInt64}(undef, np * N) # TODO technically it's always `Nnprimes`?
     for i in 1:N
+        neg = is_negative(x[i], logq)
         for j in 1:np
-            res[(j-1)*N + i] = mod(x[i], ring.multiplier.pVec[j])
+            res[(j-1)*N + i] = if neg
+                m = mod(NegMod(x[i], mm), ring.multiplier.pVec[j])
+                iszero(m) ? m : ring.multiplier.pVec[j] - m
+            else
+                mod(x[i], ring.multiplier.pVec[j])
+            end
         end
     end
 
@@ -349,7 +359,7 @@ end
 
 
 function sub(ring::Ring, p1::Array{BigInt, 1}, p2::Array{BigInt, 1}, modulus::BigInt)
-    AddMod.(p1, -p2, modulus)
+    AddMod.(p1, NegMod.(p2, modulus), modulus)
 end
 
 
@@ -371,7 +381,7 @@ function multByMonomial(ring::Ring, p::Array{BigInt, 1}, monomialDeg::Int)
 end
 
 
-function leftRotate(ring::Ring, p::Array{BigInt, 1}, r::Int)
+function leftRotate(ring::Ring, p::Array{BigInt, 1}, r::Int, q::BigInt)
     # TODO: what's the difference from multByMonomial()?
     res = similar(p)
     pow = ring.rotGroup[r+1]
@@ -381,7 +391,7 @@ function leftRotate(ring::Ring, p::Array{BigInt, 1}, r::Int)
         if shift < N
             res[shift+1] = p[i+1]
         else
-            res[shift - N + 1] = -p[i+1]
+            res[shift - N + 1] = q-p[i+1]
         end
     end
     res
@@ -479,12 +489,12 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
                 for i in 0:dslots-1
                     jdx = Nh + i * dgap
                     idx = i * dgap
-                    pvec[idx + 1] = float_to_integer(real(pvals[i + 1]), logp)
-                    pvec[jdx + 1] = float_to_integer(imag(pvals[i + 1]), logp)
+                    pvec[idx + 1] = float_to_integer(real(pvals[i + 1]), logp, logp + 1)
+                    pvec[jdx + 1] = float_to_integer(imag(pvals[i + 1]), logp, logp + 1)
                 end
                 bndvec[pos + 1] = maxBits(pvec, N)
                 np = cld(bndvec[pos + 1] + logQ + 2 * logN + 2, 59)
-                rpvec[pos + 1] = CRT(ring, pvec, np)
+                rpvec[pos + 1] = CRT(ring, pvec, np, logp + 1)
                 for i in 0:N-1
                     pvec[i + 1] = zero(BigInt)
                 end
@@ -499,12 +509,12 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
         for i in 0:dslots-1
             idx = i * dgap
             jdx = Nh + i * dgap
-            pvec[idx + 1] = float_to_integer(real(pvals[i+1]), logp)
-            pvec[jdx + 1] = float_to_integer(imag(pvals[i+1]), logp)
+            pvec[idx + 1] = float_to_integer(real(pvals[i+1]), logp, logp + 1)
+            pvec[jdx + 1] = float_to_integer(imag(pvals[i+1]), logp, logp + 1)
         end
         bnd1 = maxBits(pvec, N)
         np = cld(bnd1 + logQ + 2 * logN + 2, 59)
-        rp1 = CRT(ring, pvec, np)
+        rp1 = CRT(ring, pvec, np, logp + 1)
         for i in 0:N-1
             pvec[i+1] = zero(BigInt)
         end
@@ -518,12 +528,12 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
         for i in 0:dslots-1
             idx = i * dgap
             jdx = Nh + i * dgap
-            pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp)
-            pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp)
+            pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp, logp + 1)
+            pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp, logp + 1)
         end
         bnd2 = maxBits(pvec, N)
         np = cld(bnd2 + logQ + 2 * logN + 2, 59)
-        rp2 = CRT(ring, pvec, np)
+        rp2 = CRT(ring, pvec, np, logp + 1)
         for i in 0:N-1
             pvec[i+1] = zero(BigInt)
         end
@@ -546,12 +556,12 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
                 for i in 0:slots-1
                     idx = i * gap
                     jdx = Nh + i * gap
-                    pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp)
-                    pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp)
+                    pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp, logp + 1)
+                    pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp, logp + 1)
                 end
                 bndvec[pos+1] = maxBits(pvec, N)
                 np = cld(bndvec[pos+1] + logQ + 2 * logN + 2, 59)
-                rpvec[pos+1] = CRT(ring, pvec, np)
+                rpvec[pos+1] = CRT(ring, pvec, np, logp + 1)
                 for i in 0:N-1
                     pvec[i+1] = zero(BigInt)
                 end
@@ -577,12 +587,12 @@ function addBootContext!(ring::Ring, logSlots::Int, logp::Int)
             for i in 0:slots-1
                 idx = i * gap
                 jdx = Nh + i * gap
-                pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp)
-                pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp)
+                pvec[idx+1] = float_to_integer(real(pvals[i+1]), logp, logp + 1)
+                pvec[jdx+1] = float_to_integer(imag(pvals[i+1]), logp, logp + 1)
             end
             bndvecInv[pos+1] = maxBits(pvec, N)
             np = cld(bndvecInv[pos+1] + logQ + 2 * logN + 2, 59)
-            rpvecInv[pos+1] = CRT(ring, pvec, np)
+            rpvecInv[pos+1] = CRT(ring, pvec, np, logp + 1)
             for i in 0:N-1
                 pvec[i+1] = zero(BigInt)
             end

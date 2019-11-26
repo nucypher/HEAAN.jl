@@ -41,8 +41,8 @@ function addEncKey(rng::MyRNG, secretKey::SecretKey, ring::Ring)
     bx = subFromGaussAndEqual(rng, ring, bx, QQ)
 
     key = Key()
-    key.rax .= CRT(ring, ax, nprimes)
-    key.rbx .= CRT(ring, bx, nprimes)
+    key.rax .= CRT(ring, ax, nprimes, logQQ)
+    key.rbx .= CRT(ring, bx, nprimes, logQQ)
 
     key
 end
@@ -62,8 +62,8 @@ function addMultKey(rng::MyRNG, secretKey::SecretKey, ring::Ring)
     addAndEqual!(bx, sxsx, QQ)
 
     key = Key()
-    key.rax .= CRT(ring, ax, nprimes)
-    key.rbx .= CRT(ring, bx, nprimes)
+    key.rax .= CRT(ring, ax, nprimes, logQQ)
+    key.rbx .= CRT(ring, bx, nprimes, logQQ)
 
     key
 end
@@ -201,6 +201,8 @@ end
 function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
     res = Ciphertext(cipher1.logp + cipher2.logp, cipher1.logq, cipher1.n)
 
+    @assert cipher1.logq == cipher2.logq
+
     ring = scheme.ring
 
     q = ring.qpows[cipher1.logq+1]
@@ -208,11 +210,12 @@ function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
 
     np = cld(2 + cipher1.logq + cipher2.logq + logN + 2, 59)
 
-    ra1 = CRT(ring, cipher1.ax, np)
-    rb1 = CRT(ring, cipher1.bx, np)
-    ra2 = CRT(ring, cipher2.ax, np)
-    rb2 = CRT(ring, cipher2.bx, np)
+    ra1 = CRT(ring, cipher1.ax, np, cipher1.logq)
+    rb1 = CRT(ring, cipher1.bx, np, cipher1.logq)
+    ra2 = CRT(ring, cipher2.ax, np, cipher2.logq)
+    rb2 = CRT(ring, cipher2.bx, np, cipher2.logq)
 
+    # TODO: shouldn't it be logq1 + logq2? Or need to check that logq1==logq2
     axax = multDNTT(ring, ra1, ra2, np, q)
     bxbx = multDNTT(ring, rb1, rb2, np, q)
 
@@ -224,7 +227,7 @@ function mult(scheme::Scheme, cipher1::Ciphertext, cipher2::Ciphertext)
     key = scheme.keyMap[MULTIPLICATION]
 
     np = cld(cipher1.logq + logQQ + logN + 2, 59)
-    raa = CRT(ring, axax, np)
+    raa = CRT(ring, axax, np, cipher1.logq) # TODO: see the note above
     res.ax .= multDNTT(ring, raa, key.rax, np, qQ)
     res.bx .= multDNTT(ring, raa, key.rbx, np, qQ)
 
@@ -271,13 +274,13 @@ function addLeftRotKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey, r::Int
     bx = mult(ring, secretKey.sx, ax, np, QQ)
     bx = subFromGaussAndEqual(rng, ring, bx, QQ)
 
-    spow = leftRotate(ring, secretKey.sx, r)
+    spow = leftRotate(ring, secretKey.sx, r, QQ)
     leftShiftAndEqual!(spow, logQ, QQ)
     bx = add(ring, bx, spow, QQ)
 
     key = Key()
-    key.rax .= CRT(ring, ax, nprimes)
-    key.rbx .= CRT(ring, bx, nprimes)
+    key.rax .= CRT(ring, ax, nprimes, logQQ)
+    key.rbx .= CRT(ring, bx, nprimes, logQQ)
 
     push!(scheme.leftRotKeyMap, r => key)
 end
@@ -302,13 +305,19 @@ function leftRotateFast(scheme::Scheme, cipher::Ciphertext, r::Int)
 
     cipher_res = Ciphertext(cipher.logp, cipher.logq, cipher.n)
 
-    bxrot = leftRotate(ring, cipher.bx, r)
-    axrot = leftRotate(ring, cipher.ax, r)
+    check_range(cipher.ax, cipher.logq)
+    check_range(cipher.bx, cipher.logq)
+
+    bxrot = leftRotate(ring, cipher.bx, r, one(BigInt) << cipher.logq)
+    axrot = leftRotate(ring, cipher.ax, r, one(BigInt) << cipher.logq)
+
+    check_range(bxrot, cipher.logq)
+    check_range(axrot, cipher.logq)
 
     key = scheme.leftRotKeyMap[r]
     np = cld(cipher.logq + logQQ + logN + 2, 59)
 
-    rarot = CRT(ring, axrot, np)
+    rarot = CRT(ring, axrot, np, cipher.logq)
 
     cipher_res.ax .= multDNTT(ring, rarot, key.rax, np, qQ)
     cipher_res.bx .= multDNTT(ring, rarot, key.rbx, np, qQ)
@@ -319,6 +328,9 @@ function leftRotateFast(scheme::Scheme, cipher::Ciphertext, r::Int)
     # TODO: Some of `bxrot` elements are >q here (in the original as well)
     # Need to check and see where it is coming from.
     cipher_res.bx .= add(ring, cipher_res.bx, bxrot, q)
+
+    check_range(cipher_res.ax, cipher_res.logq)
+    check_range(cipher_res.bx, cipher_res.logq)
 
     cipher_res
 end
@@ -343,8 +355,8 @@ function addConjKey!(rng::MyRNG, scheme::Scheme, secretKey::SecretKey)
     check_range(bx, logQQ)
 
     key = Key()
-    key.rax .= CRT(ring, ax, nprimes)
-    key.rbx .= CRT(ring, bx, nprimes)
+    key.rax .= CRT(ring, ax, nprimes, logQQ)
+    key.rbx .= CRT(ring, bx, nprimes, logQQ)
 
     scheme.keyMap[CONJUGATION] = key
 end
@@ -363,12 +375,15 @@ function conjugate(scheme::Scheme, cipher::Ciphertext)
     check_range(cipher.bx, cipher.logq)
 
     bxconj = conjugate(ring, cipher.bx, one(BigInt) << cipher.logq, true)
-    axconj = conjugate(ring, cipher.ax, one(BigInt) << cipher.logq)
+
+    # TODO: setting `true` here loses compatibility with C++ HEAAN,
+    # but keeps the precision the same.
+    axconj = conjugate(ring, cipher.ax, one(BigInt) << cipher.logq, true)
 
     key = scheme.keyMap[CONJUGATION]
 
     np = cld(cipher.logq + logQQ + logN + 2, 59)
-    raconj = CRT(ring, axconj, np)
+    raconj = CRT(ring, axconj, np, cipher.logq)
     cipher_res.ax .= multDNTT(ring, raconj, key.rax, np, qQ)
     cipher_res.bx .= multDNTT(ring, raconj, key.rbx, np, qQ)
 
@@ -401,8 +416,8 @@ function square(scheme::Scheme, cipher::Ciphertext)
 
     np = cld(2 * cipher.logq + logN + 2, 59)
 
-    ra = CRT(ring, cipher.ax, np)
-    rb = CRT(ring, cipher.bx, np)
+    ra = CRT(ring, cipher.ax, np, cipher.logq)
+    rb = CRT(ring, cipher.bx, np, cipher.logq)
 
     bxbx = squareNTT(ring, rb, np, q)
     axax = squareNTT(ring, ra, np, q)
@@ -412,7 +427,7 @@ function square(scheme::Scheme, cipher::Ciphertext)
     key = scheme.keyMap[MULTIPLICATION]
 
     np = cld(cipher.logq + logQQ + logN + 2, 59)
-    raa = CRT(ring, axax, np)
+    raa = CRT(ring, axax, np, cipher.logq)
     res.ax .= multDNTT(ring, raa, key.rax, np, qQ)
     res.bx .= multDNTT(ring, raa, key.rbx, np, qQ)
 
@@ -476,7 +491,7 @@ function addConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, Floa
     ring = scheme.ring
     q = ring.qpows[cipher.logq + 1]
     res = copy(cipher)
-    cnstZZ = logp < 0 ? float_to_integer(cnst, cipher.logp) : float_to_integer(cnst, logp)
+    cnstZZ = logp < 0 ? float_to_integer(cnst, cipher.logp, cipher.logq) : float_to_integer(cnst, logp, cipher.logq)
     res.bx[0+1] = AddMod(cipher.bx[0+1], cnstZZ, q)
     res
 end
@@ -485,7 +500,7 @@ end
 function multByConst(scheme::Scheme, cipher::Ciphertext, cnst::Union{BigFloat, Float64}, logp::Int)
     ring = scheme.ring
     q = ring.qpows[cipher.logq + 1]
-    cnstZZ = float_to_integer(cnst, logp)
+    cnstZZ = float_to_integer(cnst, logp, cipher.logq)
 
     res = Ciphertext(cipher.logp + logp, cipher.logq, cipher.n)
     res.ax .= multByConst(ring, cipher.ax, cnstZZ, q)
@@ -524,6 +539,9 @@ end
 
 
 function normalize(scheme::Scheme, cipher::Ciphertext)
+    # Since we want all numbers to be positive, this does nothing
+    return cipher
+
     q = scheme.ring.qpows[cipher.logq+1]
     new_cipher = Ciphertext(cipher.logp, cipher.logq, cipher.n)
     new_cipher.ax .= cipher.ax
@@ -709,9 +727,13 @@ function evalExp(scheme::Scheme, cipher::Ciphertext, logT::Int, logI::Int=4)
     bootContext = ring.bootContextMap[logSlots]
     if logSlots < logNh
         tmp = conjugate(scheme, cipher)
+        check_range(tmp)
         cipher = sub(scheme, cipher, tmp)
+        check_range(cipher)
         cipher = divByPo2(scheme, cipher, logT + 1) # bitDown: logT + 1
+        check_range(cipher)
         cipher = exp2pi(scheme, cipher, bootContext.logp) # bitDown: logT + 1 + 3(logq + logI)
+        check_range(cipher)
         for i in 0:logI+logT-1
             cipher = square(scheme, cipher)
             cipher = reScaleBy(scheme, cipher, bootContext.logp)
