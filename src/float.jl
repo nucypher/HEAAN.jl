@@ -96,17 +96,22 @@ exponent_bias(::Type{T}) where T <: Base.IEEEFloat =
 """
 Convert an integer `x` to float and divide by `2^shift`.
 """
-function integer_to_float(::Type{V}, x::Integer, shift::Int) where V <: Base.IEEEFloat
-    n = num_bits(x)
-    e = n - 1 - shift + exponent_bias(V)
+function integer_to_float(::Type{V}, x::T, shift::Int, log_modulus::Int) where {T <: Integer, V <: Base.IEEEFloat}
 
-    if x == 0 || e < 0
+    if iszero(x)
         return zero(V)
     end
 
-    s = signbit(x)
+    s = is_negative(x, log_modulus)
+    # TODO: move to a function?
     if s
-        x = -x
+        x = (one(T) << log_modulus) - x
+    end
+
+    n = num_bits(x)
+    e = n - 1 - shift + exponent_bias(V)
+    if e < 0
+        return zero(V)
     end
 
     s_len = significand_bits(V)
@@ -143,4 +148,3 @@ function integer_to_float(::Type{V}, x::Integer, shift::Int) where V <: Base.IEE
 
     s ? -res : res
 end
-

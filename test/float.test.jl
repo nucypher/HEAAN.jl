@@ -1,6 +1,5 @@
 using Random
-using DarkIntegers
-using HEAAN
+using HEAAN: float_to_integer, integer_to_float
 
 
 function shift_bigfloat(x::BigFloat, shift::Int)
@@ -21,7 +20,10 @@ function float_to_integer_reference(x::Float64, shift::Int, log_modulus::Int)
 end
 
 
-function integer_to_float_reference(x::BigInt, shift::Int)
+function integer_to_float_reference(x::BigInt, shift::Int, log_modulus::Int)
+    if x >= one(BigInt) << (log_modulus - 1)
+        x -= one(BigInt) << log_modulus
+    end
     xp = BigFloat(x)
     xp = shift_bigfloat(xp, -shift)
     convert(Float64, xp)
@@ -42,7 +44,7 @@ end
         shift = 20
 
         ref = float_to_integer_reference(x, shift, log_modulus)
-        res = HEAAN.float_to_integer(BigInt, x, shift, log_modulus)
+        res = float_to_integer(BigInt, x, shift, log_modulus)
 
         if ref != res
             @test_fail "Converting $x, got $res, expected $ref"
@@ -54,14 +56,15 @@ end
 
 @testcase "Integer to float" begin
     rng = MersenneTwister(123)
+    log_modulus = 100
 
     for i in 1:10000
-        x = rand(rng, (-one(BigInt)<<100):(one(BigInt)<<100))
+        x = rand(rng, zero(BigInt):(one(BigInt)<<log_modulus)-one(BigInt))
 
         shift = 20
 
-        ref = integer_to_float_reference(x, shift)
-        res = HEAAN.integer_to_float(Float64, x, shift)
+        ref = integer_to_float_reference(x, shift, log_modulus)
+        res = integer_to_float(Float64, x, shift, log_modulus)
 
         if ref != res
             @test_fail "Converting $x, got $res, expected $ref"

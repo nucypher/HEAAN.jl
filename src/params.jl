@@ -1,34 +1,32 @@
-const logN = 16
-const logQ = 600
+struct Params
 
-const sigma = 3.2
-const h = 64
-const pbnd = 59
-const kbar = 60
-const kbar2 = 120
-const logNh = logN - 1
-const logQQ = 2 * logQ
-const N = 1 << logN
-const Nh = 1 << logNh
-const M = N << 1
-const nprimes = (2 + logN + 4 * logQ + pbnd - 1) ÷ pbnd
-const Nnprimes = nprimes << logN
-# const cbnd = (logQQ + NTL_ZZ_NBITS - 1) ÷ NTL_ZZ_NBITS # ???
-const bignum = Int(0xfffffff)
-const Q = BigInt(1) << logQ
-const QQ = BigInt(1) << logQQ
+    log_polynomial_length :: Int # in HEAAN: N
+    log_lo_modulus :: Int # in HEAAN: logQ
+    log_hi_modulus :: Int # in HEAAN: == logQ
+    gaussian_noise_stddev :: Float64 # in HEAAN: sigma
+    secret_key_length :: Int # in HEAAN: h
 
+    function Params(; log_polynomial_length::Int=16, log_lo_modulus::Int=300)
+        # TODO: this all (including log_polynomial_length) should be derived
+        # from the security parameter `lambda`.
 
-function check_range(x::Array{BigInt, 1}, logq::Int)
-    @assert !any(signbit.(x))
-    nbs = maximum(num_bits.(x))
-    @assert nbs <= logq
-    #@assert nbs == logq "max nbs = $nbs, with logq = $logq"
-end
+        # From Cheon et al.,
+        # "We need to set the ring dimension N that satisfies the security condition
+        # `N >= (λ+110) / 7.2 * (log_hi_modulus + log_lo_modulus)` ...
+        # it suffices to assume that P [`log_hi_modulus`] is
+        # approximately equal to qL [`log_lo_modulus`]."
 
+        gaussian_noise_stddev = 3.2
+        secret_key_length = 64
+        log_hi_modulus = log_lo_modulus
 
-function is_negative(x::BigInt, logq::Int)
-    @assert !signbit(x)
-    bit(x, logq - 1)
+        new(
+            log_polynomial_length,
+            log_lo_modulus,
+            log_hi_modulus,
+            gaussian_noise_stddev,
+            secret_key_length,
+            )
+    end
 end
 

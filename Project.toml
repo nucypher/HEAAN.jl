@@ -1,0 +1,12 @@
+name = "HEAAN"
+uuid = "868382ca-9373-4264-b8a6-5d1addc9b6f9"
+authors = ["Bogdan Opanchuk <bogdan@opanchuk.net>"]
+version = "0.0.1"
+
+[deps]
+DarkIntegers = "95d18f7b-8dde-4426-a3cb-b3b9e7df9890"
+Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+julia = "≥ 1.0.0"
