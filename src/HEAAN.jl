@@ -6,6 +6,7 @@ using Random
 
 include("compat.jl")
 include("params.jl")
+include("int.jl")
 include("rns.jl")
 include("capped_polynomial.jl")
 include("float.jl")

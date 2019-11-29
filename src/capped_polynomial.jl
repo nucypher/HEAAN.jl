@@ -1,33 +1,3 @@
-
-@generated function all_bits_mask(::Type{T}, ::Val{Q}) where {T, Q}
-    mask = (one(T) << Q) - one(T)
-    :( $mask )
-end
-
-@generated function modulus(::Type{T}, ::Val{Q}) where {T, Q}
-    modulus = one(T) << Q
-    :( $modulus )
-end
-
-#=
-@generated function high_bit_mask(::Type{BinModuloInt{T, Q}}) where {T, Q}
-    mask = one(T) << (Q - 1)
-    :( $mask )
-end
-
-
-=#
-
-
-function is_negative(x::BigInt, logq::Int)
-    # In the paper the range of numbers is (-q/2, q/2]
-    # So we consider everything in [0, q/2] positive and [q/2+1, q-1) negative.
-    half_q = one(BigInt) << (logq - 1)
-    high_bit = !iszero(x & half_q)
-    high_bit && x != half_q
-end
-
-
 struct CappedPolynomial{T <: Polynomial, Q}
     polynomial :: T
 

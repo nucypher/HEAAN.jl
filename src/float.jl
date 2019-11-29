@@ -8,10 +8,21 @@ mantissa(x::T) where T <: Base.IEEEFloat =
     reinterpret(Unsigned, x) & Base.significand_mask(T)
 
 
+exponent_bias(::Type{T}) where T <: Base.IEEEFloat =
+    Int(Base.exponent_one(T) >> significand_bits(T))
+
+
 """
 Returns `x * 2^shift` rounded to an integer.
+If `x` is negative, return `2^log_modulus - abs(x) * 2^shift`.
+The resulting value is guaranteed to lie in `[0, 2^log_modulus)` range,
+which means that `-(2^shift-1)/(2^(log_modulus-1)) <= x <= 2^shift/(2^(log_modulus-1))`.
+
+Negative values are encoded in the high half of the interval `[0, 2^log_modulus)`
+(the sign of `x` will correspond to what `is_negative()` returns for the resulting integer).
 """
-function float_to_integer(::Type{V}, x::T, shift::Int, log_full::Int) where {V <: Integer, T <: Base.IEEEFloat}
+function float_to_integer(
+        ::Type{V}, x::T, shift::Int, log_modulus::Int) where {V <: Integer, T <: Base.IEEEFloat}
 
     if iszero(x)
         # `exponent()` does not work for x=0
@@ -25,35 +36,44 @@ function float_to_integer(::Type{V}, x::T, shift::Int, log_full::Int) where {V <
     # Add the implied 1 to the fractional part
     m |= one(u_type) << sb
 
-    # Total shift.
+    # Shift for the mantissa bits.
     # Since mantissa is the fractional part, its length should be subtracted
-    full_shift = exponent(x) + shift - sb
+    mantissa_shift = exponent(x) + shift - sb
 
     # At this point x == m * 2.0^shift
 
-    correction = if full_shift < 0
+    correction = if mantissa_shift < 0
         # We will have a fractional part after the shift, need to round
 
         # The fractional part (that will be discarded after the shift),
         # that is the lowest (-shift) bits of `m`
-        remainder = m & ((one(u_type) << (-full_shift)) - one(u_type))
+        remainder = m & ((one(u_type) << (-mantissa_shift)) - one(u_type))
 
         # See if it's >= 0.5
-        leading_zeros(remainder) == (sizeof(u_type) * 8 - (-full_shift))
+        leading_zeros(remainder) == (sizeof(u_type) * 8 - (-mantissa_shift))
     else
         false
     end
 
     # Convert the mantissa and shift it
-    r = V(m) << full_shift
+    r = convert(V, m) << mantissa_shift
 
     if correction
         r += one(V)
     end
 
-    @assert num_bits(r) < log_full
+    n = num_bits(r)
+    s = signbit(x)
 
-    signbit(x) ? (one(BigInt) << log_full) - r : r
+    # Check the range. A special check for the maximum positive integer.
+    if n >= log_modulus && !(!s && r == high_bit_mask(V, log_modulus))
+        throw(DomainError(
+            x,
+            "the value must lie in range " *
+            "[-(2^shift-1)/(2^(log_modulus-1)), 2^shift/(2^(log_modulus-1))]"))
+    end
+
+    s ? modulus(BigInt, log_modulus) - r : r
 end
 
 
@@ -66,46 +86,29 @@ function float_to_integer(::Type{V}, x::BigFloat, shift::Int, log_full::Int) whe
 end
 
 
-function num_bits(x::BigInt)
-    if iszero(x)
-        return 0
-    end
-
-    if signbit(x)
-        x = -x
-    end
-
-    for i in abs(x.size):-1:1
-        limb = unsafe_load(x.d, i)
-
-        # BigInts seem to resize automatically, but we're venturing
-        # into the undocumented territory here, so just in case
-        # handle possible empty limbs.
-        if !iszero(limb)
-            limb_bits = sizeof(limb) << 3
-            return (i - 1) * limb_bits + (limb_bits - leading_zeros(limb))
-        end
-    end
-end
-
-
-exponent_bias(::Type{T}) where T <: Base.IEEEFloat =
-    Int(Base.exponent_one(T) >> significand_bits(T))
-
-
 """
 Convert an integer `x` to float and divide by `2^shift`.
+`x` must lie in range `[0, 2^log_modulus)`.
+
+Negative values are encoded in the high half of the interval `[0, 2^log_modulus)`
+(`is_negative()` is used to determine the sign).
 """
-function integer_to_float(::Type{V}, x::T, shift::Int, log_modulus::Int) where {T <: Integer, V <: Base.IEEEFloat}
+function integer_to_float(
+        ::Type{V}, x::T, shift::Int, log_modulus::Int) where {T <: Integer, V <: Base.IEEEFloat}
 
     if iszero(x)
         return zero(V)
     end
 
+    n = num_bits(x)
+    if signbit(x) || n > log_modulus
+        throw(DomainError(x, "the value must lie in range [0, 2^log_modulus)"))
+    end
+
     s = is_negative(x, log_modulus)
     # TODO: move to a function?
     if s
-        x = (one(T) << log_modulus) - x
+        x = modulus(T, log_modulus) - x
     end
 
     n = num_bits(x)

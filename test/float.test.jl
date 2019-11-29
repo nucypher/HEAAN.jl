@@ -54,6 +54,35 @@ end
 end
 
 
+@testcase "Float to integer, corner cases" begin
+
+    # zero
+    x = float_to_integer(Int, 0.0, 15, 16)
+    @test x == 0
+
+    # biggest positive number
+    x = float_to_integer(Int, 1.0, 15, 16)
+    @test x == 2^15
+
+    # smallest negative number
+    x = float_to_integer(Int, -0.999969482421875, 15, 16)
+    @test x == 2^15+1
+
+    # biggest negative number
+    x = float_to_integer(Int, -3.0517578125e-5, 15, 16)
+    @test x == 2^16-1
+
+    # very small number, rounded to zero
+    x = float_to_integer(Int, 1e-10, 15, 16)
+    @test x == 0
+
+    # values outside the range
+    @test_throws DomainError float_to_integer(Int, 1.01, 15, 16)
+    @test_throws DomainError float_to_integer(Int, -1.0, 15, 16)
+
+end
+
+
 @testcase "Integer to float" begin
     rng = MersenneTwister(123)
     log_modulus = 100
@@ -71,6 +100,35 @@ end
             return
         end
     end
+end
+
+
+@testcase "Integer to float, corner cases" begin
+
+    # zero
+    x = integer_to_float(Float64, 0, 15, 16)
+    @test x == 0.0
+
+    # biggest positive number
+    x = integer_to_float(Float64, 2^15, 15, 16)
+    @test x == 1.0
+
+    # smallest negative number
+    x = integer_to_float(Float64, 2^15+1, 15, 16)
+    @test x == -0.999969482421875
+
+    # biggest negative number
+    x = integer_to_float(Float64, 2^16-1, 15, 16)
+    @test x == -3.0517578125e-5
+
+    # very small number, rounded to zero
+    x = integer_to_float(Float64, 1, 1040, 16)
+    @test x == 0.0
+
+    # values outside [0, modulus)
+    @test_throws DomainError integer_to_float(Float64, 2^16, 15, 16)
+    @test_throws DomainError integer_to_float(Float64, -1, 15, 16)
+
 end
 
 
