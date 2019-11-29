@@ -4,12 +4,12 @@ using DarkIntegers
 using Primes
 using Random
 
-include("compat.jl")
-include("params.jl")
 include("int.jl")
-include("rns.jl")
-include("capped_polynomial.jl")
 include("float.jl")
+include("compat.jl")
+include("rns.jl")
+include("params.jl")
+include("capped_polynomial.jl")
 include("secret_key.jl")
 include("public_key_set.jl")
 include("embedding.jl")

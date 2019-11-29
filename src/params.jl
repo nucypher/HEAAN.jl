@@ -30,3 +30,43 @@ struct Params
     end
 end
 
+
+function _rns_plan(params::Params)
+    pbnd = 59 # TODO: move to Params?
+    # TODO: why `2 * (params.log_lo_modulus + params.log_hi_modulus)`?
+    # do we really use this range anywhere?
+    nprimes = (
+        2 + params.log_polynomial_length +
+        2 * (params.log_lo_modulus + params.log_hi_modulus) + pbnd - 1) ÷ pbnd
+
+    pVec = Array{UInt64}(undef, nprimes)
+    N = 2^params.log_polynomial_length
+
+    # TODO: precompute the primes? At least for the case of the default N
+    primetest = (one(UInt64) << pbnd) + one(UInt64)
+    for i in 0:nprimes-1
+        while true
+            primetest += N * 2
+            if isprime(primetest)
+                pVec[i+1] = primetest
+                break
+            end
+        end
+    end
+
+    RNSPlan(pVec)
+end
+
+
+const _rns_plans = IdDict{Params, RNSPlan}()
+
+
+function rns_plan(params::Params)
+    if haskey(_rns_plans, params)
+        _rns_plans[params]
+    else
+        res = _rns_plan(params)
+        _rns_plans[params] = res
+        res
+    end
+end

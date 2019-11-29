@@ -61,39 +61,42 @@ Base.:>>(x::CappedPolynomial{T, Q}, shift::Integer) where {T, Q} =
 
 
 struct RNSPolynomial
-    rns :: RNS
+    plan :: RNSPlan
     residuals :: Array{UInt64, 2}
 end
 
 
-function to_rns(rns::RNS, x::CappedPolynomial{T, Q}, np::Int) where {T, Q}
+function to_rns(plan::RNSPlan, x::CappedPolynomial{T, Q}, np::Int) where {T, Q}
     plen = length(x.polynomial.coeffs)
     res = Array{UInt64}(undef, plen, np)
     for i in 1:plen
-        res[i,:] .= to_rns(rns, x.polynomial.coeffs[i], np, Q)
+        res[i,:] .= to_rns(plan, x.polynomial.coeffs[i], np, Q)
     end
-    RNSPolynomial(rns, res)
+    RNSPolynomial(plan, res)
 end
+
+# TODO: `length(plan.primes)` should be the default?
+to_rns(plan::RNSPlan, x::CappedPolynomial{T, Q}) where {T, Q} = to_rns(plan, x, length(plan.primes))
 
 
 function from_rns(::Type{CappedPolynomial{T, Q}}, x::RNSPolynomial, np::Int) where {T, Q}
-    rns = x.rns
+    plan = x.plan
     plen = size(x.residuals, 1)
     res = Array{BigInt}(undef, plen)
     for i in 1:plen
-        res[i] = from_rns(rns, x.residuals[i,:], np, Q)
+        res[i] = from_rns(plan, x.residuals[i,:], Q)
     end
     CappedPolynomial{T, Q}(Polynomial(res, true))
 end
 
 
 function ntt_rns(x::RNSPolynomial; inverse::Bool=false)
-    rns = x.rns
+    plan = x.plan
     res = Array{UInt64}(undef, size(x.residuals)...)
     np = size(x.residuals, 2)
     for j in 1:np
         r = x.residuals[:,j]
-        m = rns.pVec[j]
+        m = plan.primes[j]
 
         # TODO: keep residuals already casted to RRElem?
         tp = RRElem{UInt64, m}
@@ -102,25 +105,26 @@ function ntt_rns(x::RNSPolynomial; inverse::Bool=false)
         res[:,j] .= DarkIntegers.rr_value.(rr)
     end
 
-    RNSPolynomial(rns, res)
+    RNSPolynomial(plan, res)
 end
 
 
 function Base.:*(x::RNSPolynomial, y::RNSPolynomial)
     # TODO: keep keys and such in M-representation, to speed up multiplication
-    rns = x.rns
+    plan = x.plan
     res = similar(x.residuals)
     np = size(x.residuals, 2)
     for j in 1:np
-        res[:,j] = mulmod.(x.residuals[:,j], y.residuals[:,j], rns.pVec[j])
+        # TODO: use Barrett reduction, or Montgomery multiplication
+        res[:,j] = mulmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
     end
-    RNSPolynomial(rns, res)
+    RNSPolynomial(plan, res)
 end
 
 
 function mult(x::CappedPolynomial{T, Q}, y::RNSPolynomial, np::Int) where {T, Q}
-    rns = y.rns
-    x_rns = ntt_rns(to_rns(rns, x, np), inverse=false)
+    plan = y.plan
+    x_rns = ntt_rns(to_rns(plan, x, np), inverse=false)
     res_rns = ntt_rns(x_rns * y, inverse=true)
     from_rns(CappedPolynomial{T, Q}, res_rns, np)
 end

@@ -53,9 +53,8 @@ struct EncryptionKey
         bx = round.(Int, gg) - secret_key * ax
 
         plan = rns_plan(params)
-        # TODO: `plan.nprimes` should be the default?
-        rax = ntt_rns(to_rns(plan, ax, plan.nprimes))
-        rbx = ntt_rns(to_rns(plan, bx, plan.nprimes))
+        rax = ntt_rns(to_rns(plan, ax))
+        rbx = ntt_rns(to_rns(plan, bx))
 
         new(params, PublicKeyRNS(rax, rbx))
     end
