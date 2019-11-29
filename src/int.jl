@@ -1,4 +1,4 @@
-@generated function all_bits_mask(::Type{T}, ::Val{Q}) where {T, Q}
+@generated function _all_bits_mask(::Type{T}, ::Val{Q}) where {T, Q}
     mask = (one(T) << Q) - one(T)
     :( $mask )
 end
@@ -7,10 +7,10 @@ end
 """
 Returns the precomputed value `(one(T) << log_modulus) - one(T)`.
 """
-all_bits_mask(::Type{T}, log_modulus::Int) where T = all_bits_mask(T, Val(log_modulus))
+all_bits_mask(::Type{T}, log_modulus::Int) where T = _all_bits_mask(T, Val(log_modulus))
 
 
-@generated function modulus(::Type{T}, ::Val{Q}) where {T, Q}
+@generated function _modulus(::Type{T}, ::Val{Q}) where {T, Q}
     modulus = one(T) << Q
     :( $modulus )
 end
@@ -19,10 +19,10 @@ end
 """
 Returns the precomputed value `one(T) << log_modulus`.
 """
-modulus(::Type{T}, log_modulus::Int) where T = modulus(T, Val(log_modulus))
+modulus(::Type{T}, log_modulus::Int) where T = _modulus(T, Val(log_modulus))
 
 
-@generated function high_bit_mask(::Type{T}, ::Val{Q}) where {T, Q}
+@generated function _high_bit_mask(::Type{T}, ::Val{Q}) where {T, Q}
     mask = one(T) << (Q - 1)
     :( $mask )
 end
@@ -31,7 +31,7 @@ end
 """
 Returns the precomputed value `one(T) << (log_modulus - 1)`.
 """
-high_bit_mask(::Type{T}, log_modulus::Int) where T = high_bit_mask(T, Val(log_modulus))
+high_bit_mask(::Type{T}, log_modulus::Int) where T = _high_bit_mask(T, Val(log_modulus))
 
 
 """

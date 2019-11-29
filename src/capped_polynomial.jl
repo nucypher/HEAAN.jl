@@ -19,7 +19,7 @@ end
 
 
 function normalize(x::T, log_modulus::Int) where T
-    x & all_bits_mask(T, Val(log_modulus))
+    x & all_bits_mask(T, log_modulus)
 end
 
 
@@ -47,7 +47,7 @@ Base.:*(x::CappedPolynomial{T, Q}, y::CappedPolynomial{T, Q}) where {T, Q} =
 
 function my_rshift(x::BigInt, shift::Integer, log_modulus::Int)
     if is_negative(x, log_modulus)
-        q = modulus(BigInt, Val(log_modulus))
+        q = modulus(BigInt, log_modulus)
         q - ((q - x) >> shift)
     else
         x >> shift

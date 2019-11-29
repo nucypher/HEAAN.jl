@@ -49,7 +49,7 @@ function to_rns(rns::RNS, x::BigInt, np::Int, logq::Int)
     x_neg = is_negative(x, logq)
     # TODO: check that it works as intended for x == q/2 (which is negative in our definition)
     if x_neg
-        x = modulus(BigInt, Val(logq)) - x
+        x = modulus(BigInt, logq) - x
     end
     res = Array{UInt64}(undef, np)
     for j in 1:np
