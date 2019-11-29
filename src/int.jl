@@ -3,6 +3,10 @@
     :( $mask )
 end
 
+
+"""
+Returns the precomputed value `(one(T) << log_modulus) - one(T)`.
+"""
 all_bits_mask(::Type{T}, log_modulus::Int) where T = all_bits_mask(T, Val(log_modulus))
 
 
@@ -11,6 +15,10 @@ all_bits_mask(::Type{T}, log_modulus::Int) where T = all_bits_mask(T, Val(log_mo
     :( $modulus )
 end
 
+
+"""
+Returns the precomputed value `one(T) << log_modulus`.
+"""
 modulus(::Type{T}, log_modulus::Int) where T = modulus(T, Val(log_modulus))
 
 
@@ -19,9 +27,17 @@ modulus(::Type{T}, log_modulus::Int) where T = modulus(T, Val(log_modulus))
     :( $mask )
 end
 
+
+"""
+Returns the precomputed value `one(T) << (log_modulus - 1)`.
+"""
 high_bit_mask(::Type{T}, log_modulus::Int) where T = high_bit_mask(T, Val(log_modulus))
 
 
+"""
+For `x` in range `[0, 2^log_modulus)`, returns `true` if `x > 2^log_modulus`
+and `false` otherwise.
+"""
 function is_negative(x::T, log_modulus::Int) where T
     # In the paper the range of numbers is (-modulus/2, modulus/2]
     # So we consider everything in [0, modulus/2] positive and [modulus/2+1, modulus-1) negative.
@@ -30,6 +46,9 @@ function is_negative(x::T, log_modulus::Int) where T
 end
 
 
+"""
+Return the number of bits in the representation of the absolute value of an integer.
+"""
 num_bits(x::T) where T <: Unsigned = DarkIntegers.bitsizeof(T) - leading_zeros(x)
 
 function num_bits(x::T) where T <: Signed
