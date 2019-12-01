@@ -50,7 +50,7 @@ struct EncryptionKey
 
         #gg = randn(rng, plen) * params.gaussian_noise_stddev
         gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
-        bx = Polynomial(convert.(BinModuloInt{BigInt, log_modulus}, round.(Int, gg)), true) - secret_key * ax
+        bx = round.(Int, gg) - secret_key * ax
 
         plan = rns_plan(params)
         rax = ntt_rns(to_rns(plan, ax))

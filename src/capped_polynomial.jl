@@ -69,5 +69,17 @@ function mult(x::T, y::RNSPolynomial, np::Int) where T <: Polynomial
 end
 
 
+# FIXME: these methods will not be necessary when Polynomial broadcasting
+# is implemented in DarkIntegers
+
+
+Base.:+(x::AbstractArray, y::Polynomial{BinModuloInt{T, Q}}) where {T, Q} =
+    Polynomial(convert.(BinModuloInt{T, Q}, x), y.negacyclic) + y
+
+
+Base.:-(x::AbstractArray, y::Polynomial{BinModuloInt{T, Q}}) where {T, Q} =
+    Polynomial(convert.(BinModuloInt{T, Q}, x), y.negacyclic) - y
+
+
 Base.:>>(x::Polynomial{BinModuloInt{T, Q}}, shift::Integer) where {T, Q} =
     Polynomial(x.coeffs .>> shift, x.negacyclic)

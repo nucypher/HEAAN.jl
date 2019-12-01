@@ -86,13 +86,13 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     # gg = randn(rng, plen) * params.gaussian_noise_stddev
     gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
     ax = (
-        Polynomial(convert.(BinModuloInt{BigInt, log_modulus}, round.(Int, gg)), true) +
+        round.(Int, gg) +
         mult(vx, key.key.rax, np))
 
     # gg = randn(rng, plen) * params.gaussian_noise_stddev
     gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
     bx = (
-        Polynomial(convert.(BinModuloInt{BigInt, log_modulus}, round.(Int, gg)), true) +
+        round.(Int, gg) +
         plain.polynomial +
         mult(vx, key.key.rbx, np))
 
