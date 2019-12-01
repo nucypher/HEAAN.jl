@@ -73,16 +73,16 @@ function float_to_integer(
             "[-(2^shift-1)/(2^(log_modulus-1)), 2^shift/(2^(log_modulus-1))]"))
     end
 
-    s ? modulus(BigInt, log_modulus) - r : r
+    s ? modulus(V, log_modulus) - r : r
 end
 
 
-function float_to_integer(::Type{V}, x::BigFloat, shift::Int, log_full::Int) where V <: Integer
+function float_to_integer(::Type{V}, x::BigFloat, shift::Int, log_modulus::Int) where V <: Integer
     xc = copy(x)
     xc.exp += shift
-    xi = round(BigInt, xc)
+    xi = round(V, xc)
     res = convert(V, xi)
-    signbit(xi) ? (one(BigInt) << log_full) + res : res
+    signbit(xi) ? modulus(V, log_modulus) + res : res
 end
 
 
@@ -154,6 +154,6 @@ end
 
 
 float_to_integer(::Type{BinModuloInt{T, Q}}, x, shift::Int) where {T, Q} =
-    float_to_integer(tp, x, shift, Q)
+    BinModuloInt{T, Q}(float_to_integer(T, x, shift, Q))
 integer_to_float(tp, x::BinModuloInt{T, Q}, shift::Int) where {T, Q} =
     integer_to_float(tp, x.value, shift, Q)
