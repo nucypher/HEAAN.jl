@@ -26,17 +26,14 @@ end
 function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision::Int, log_cap::Int)
     log_full = params.log_lo_modulus + log_cap
     plen = 2^params.log_polynomial_length
-    mx = zeros(BigInt, plen)
     slots = length(vals)
     gap = plen ÷ 2 ÷ slots
     uvals = unembed(params, vals)
-    for i in 0:slots-1
-        jdx = plen ÷ 2 + i * gap
-        idx = i * gap
-        mx[idx+1] = float_to_integer(BigInt, real(uvals[i+1]), log_precision + params.log_lo_modulus, log_full)
-        mx[jdx+1] = float_to_integer(BigInt, imag(uvals[i+1]), log_precision + params.log_lo_modulus, log_full)
-    end
-    poly = Polynomial(BinModuloInt{BigInt, log_full}.(mx), true)
+    tp = BinModuloInt{BigInt, log_full}
+    mx = zeros(tp, gap, slots, 2)
+    mx[1,:,1] = float_to_integer.(tp, real.(uvals), log_precision + params.log_lo_modulus)
+    mx[1,:,2] = float_to_integer.(tp, imag.(uvals), log_precision + params.log_lo_modulus)
+    poly = Polynomial(mx[:], true)
     Plaintext(params, poly, log_cap, log_precision, slots)
 end
 
