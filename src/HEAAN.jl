@@ -11,7 +11,7 @@ include("rns.jl")
 include("embedding.jl")
 
 include("params.jl")
-include("capped_polynomial.jl")
+include("polynomial.jl")
 include("secret_key.jl")
 include("public_key_set.jl")
 include("ciphertext.jl")
