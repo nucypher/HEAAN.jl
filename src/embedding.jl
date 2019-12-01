@@ -4,11 +4,16 @@ struct EmbeddingPlan
     root_powers :: Array{Complex{Float64}, 1}
 
     function EmbeddingPlan(max_len::Int)
+
         rotation_group = mod.(5 .^ (0:max_len-1), max_len * 4)
 
         # The last element being the same as the first one is intentional -
         # it simplifies addressing slightly.
-        root_powers = exp.(2pi * im .* (0:max_len*4) / (max_len * 4))
+        m_pi = Float64(pi)
+        angles = [2.0 * m_pi * j / (max_len * 4) for j in 0:max_len*4]
+        root_powers = mycos.(angles) + im * mysin.(angles)
+
+        #root_powers = exp.(2pi * im .* (0:max_len*4) / (max_len * 4))
 
         new(max_len, rotation_group, root_powers)
     end

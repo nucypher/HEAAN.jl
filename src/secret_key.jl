@@ -38,11 +38,9 @@ function sample_unique(rng::AbstractRNG, a::Int, b::Int, len::Int)
 end
 
 
-function Base.:*(secret_key::SecretKey, a::CappedPolynomial{T, Q}) where {T, Q}
+function Base.:*(secret_key::SecretKey, pa::Polynomial{BinModuloInt{T, Q}}) where {T, Q}
 
     sk_list = secret_key.nonzero_entries
-
-    pa = a.polynomial
 
     power, minus_one = sk_list[1]
     res = shift_polynomial(pa, power - 1)
@@ -58,5 +56,5 @@ function Base.:*(secret_key::SecretKey, a::CappedPolynomial{T, Q}) where {T, Q}
         end
     end
 
-    CappedPolynomial{T, Q}(normalize(res, Q))
+    res
 end

@@ -48,12 +48,12 @@ function negate(x::UInt64, p::UInt64)
 end
 
 
-function to_rns(plan::RNSPlan, x::BigInt, np::Int, log_modulus::Int)
-    x_neg = is_negative(x, log_modulus)
+function to_rns(plan::RNSPlan, x::BinModuloInt{T, Q}, np::Int) where {T, Q}
+    x_neg = signbit(x)
     if x_neg
-        x = modulus(BigInt, log_modulus) - x
+        x = -x
     end
-    res = to_rns(plan, x, np)
+    res = to_rns(plan, x.value, np)
     if x_neg
         negate.(res, (@view plan.primes[1:np]))
     else
@@ -74,10 +74,10 @@ function from_rns(plan::RNSPlan, rx::Array{UInt64, 1})
 end
 
 
-function from_rns(plan::RNSPlan, rx::Array{UInt64, 1}, log_modulus::Int)
+function from_rns(plan::RNSPlan, ::Type{BinModuloInt{T, Q}}, rx::Array{UInt64, 1}) where {T, Q}
     np = length(rx)
     primes_prod_half = plan.primes_prod_half[np]
     primes_prod = plan.primes_prod[np]
     res = from_rns(plan, rx)
-    normalize(res > primes_prod_half ? (res - primes_prod) : res, log_modulus)
+    BinModuloInt{T, Q}(normalize(res > primes_prod_half ? (res - primes_prod) : res, Q))
 end

@@ -83,3 +83,62 @@ function num_bits(x::BigInt)
         end
     end
 end
+
+
+struct BinModuloInt{T, Q} <: Number
+    value :: T
+
+    function BinModuloInt{T, Q}(x::T) where {T, Q}
+        new{T, Q}(x)
+    end
+
+    function BinModuloInt(x::T, log_modulus::Int) where T
+        # TODO: check that log_modulus actually fits in T
+        new{T, log_modulus}(x)
+    end
+end
+
+
+all_bits_mask(::Type{BinModuloInt{T, Q}}) where {T, Q} = all_bits_mask(T, Q)
+modulus(::Type{BinModuloInt{T, Q}}) where {T, Q} = modulus(T, Q)
+high_bit_mask(::Type{BinModuloInt{T, Q}}) where {T, Q} = high_bit_mask(T, Q)
+Base.signbit(x::BinModuloInt{T, Q}) where {T, Q} = is_negative(x.value, Q)
+
+
+function normalize(x::T, log_modulus::Int) where T
+    x & all_bits_mask(T, log_modulus)
+end
+
+
+Base.zero(::Type{BinModuloInt{T, Q}}) where {T, Q} = BinModuloInt{T, Q}(zero(T))
+
+
+Base.one(::Type{BinModuloInt{T, Q}}) where {T, Q} = BinModuloInt{T, Q}(one(T))
+
+
+Base.convert(::Type{BinModuloInt{T, Q}}, x::Integer) where {T, Q} =
+    BinModuloInt{T, Q}(normalize(big(x), Q))
+
+
+Base.:+(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
+    BinModuloInt(normalize(x.value + y.value, Q), Q)
+
+
+Base.:-(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
+    BinModuloInt(normalize(x.value - y.value, Q), Q)
+
+Base.:-(x::BinModuloInt{T, Q}) where {T, Q} =
+    BinModuloInt(iszero(x.value) ? x.value : modulus(BinModuloInt{T, Q}) - x.value, Q)
+
+
+Base.:*(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
+    BinModuloInt(normalize(x.value * y.value, Q), Q)
+
+
+# TODO: check that it works correctly with all corner cases
+Base.:>>(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
+    BinModuloInt{T, Q - shift}((x.value + (one(T) << (shift - 1))) >> shift)
+
+
+Base.string(x::BinModuloInt) = x.value
+Base.show(io::IO, x::BinModuloInt) = print(io, string(x))

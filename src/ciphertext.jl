@@ -1,6 +1,6 @@
 struct Plaintext
     params :: Params
-    polynomial :: CappedPolynomial
+    polynomial :: Polynomial
     log_cap :: Int
     log_precision :: Int
     slots :: Int
@@ -9,8 +9,8 @@ end
 
 struct Ciphertext
     params :: Params
-    ax :: CappedPolynomial
-    bx :: CappedPolynomial
+    ax :: Polynomial
+    bx :: Polynomial
     log_cap :: Int
     log_precision :: Int
     slots :: Int
@@ -19,7 +19,7 @@ end
 
 function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
     coeffs = rand(rng, zero(BigInt):((one(BigInt) << log_modulus) - one(BigInt)), dims...)
-    CappedPolynomial(Polynomial(coeffs, true), log_modulus)
+    Polynomial(BInModuloInt{BigInt, log_modulus}.(coeffs), true)
 end
 
 
@@ -36,7 +36,7 @@ function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision:
         mx[idx+1] = float_to_integer(BigInt, real(uvals[i+1]), log_precision + params.log_lo_modulus, log_full)
         mx[jdx+1] = float_to_integer(BigInt, imag(uvals[i+1]), log_precision + params.log_lo_modulus, log_full)
     end
-    poly = CappedPolynomial(Polynomial(mx, true), log_full)
+    poly = Polynomial(BinModuloInt{BigInt, log_full}.(mx), true)
     Plaintext(params, poly, log_cap, log_precision, slots)
 end
 
@@ -51,7 +51,7 @@ function sample_ZO(rng, len::Int, log_modulus::Int)
     for i in 0:len-1
         res[i+1] = (!bit(tmp, 2 * i)) ? zero(BigInt) : (!bit(tmp, 2 * i + 1)) ? one(BigInt) : -one(BigInt)
     end
-    CappedPolynomial(normalize(Polynomial(res, true), log_modulus), log_modulus)
+    Polynomial(BinModuloInt{BigInt, log_modulus}.(normalize.(res, log_modulus)), true)
 end
 
 #=
@@ -86,13 +86,13 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     # gg = randn(rng, plen) * params.gaussian_noise_stddev
     gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
     ax = (
-        round.(Int, gg) +
+        Polynomial(convert.(BinModuloInt{BigInt, log_modulus}, round.(Int, gg)), true) +
         mult(vx, key.key.rax, np))
 
     # gg = randn(rng, plen) * params.gaussian_noise_stddev
     gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
     bx = (
-        round.(Int, gg) +
+        Polynomial(convert.(BinModuloInt{BigInt, log_modulus}, round.(Int, gg)), true) +
         plain.polynomial +
         mult(vx, key.key.rbx, np))
 
@@ -124,15 +124,15 @@ function decode(plain::Plaintext)
     vals = Array{Complex{Float64}}(undef, slots)
 
     log_modulus = plain.log_cap
-    mx = plain.polynomial.polynomial.coeffs
+    mx = plain.polynomial.coeffs
 
     Nh = 2^plain.params.log_polynomial_length ÷ 2
     gap = Nh ÷ slots
 
     for i in 0:slots-1
         idx = i * gap
-        vr = integer_to_float(Float64, mx[idx+1], plain.log_precision, log_modulus)
-        vi = integer_to_float(Float64, mx[idx + Nh + 1], plain.log_precision, log_modulus)
+        vr = integer_to_float(Float64, mx[idx+1], plain.log_precision)
+        vi = integer_to_float(Float64, mx[idx + Nh + 1], plain.log_precision)
         vals[i+1] = vr + im * vi
     end
     embed(plain.params, vals)

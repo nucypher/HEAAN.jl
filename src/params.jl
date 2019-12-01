@@ -80,7 +80,7 @@ function embedding_plan(params::Params)
     if haskey(_embedding_plans, params)
         _embedding_plans[params]
     else
-        res = EmbeddingPlan(2^params.log_polynomial_length)
+        res = EmbeddingPlan(2^params.log_polynomial_length ÷ 2)
         _embedding_plans[params] = res
         res
     end

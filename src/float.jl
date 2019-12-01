@@ -151,3 +151,9 @@ function integer_to_float(
 
     s ? -res : res
 end
+
+
+float_to_integer(::Type{BinModuloInt{T, Q}}, x, shift::Int) where {T, Q} =
+    float_to_integer(tp, x, shift, Q)
+integer_to_float(tp, x::BinModuloInt{T, Q}, shift::Int) where {T, Q} =
+    integer_to_float(tp, x.value, shift, Q)
