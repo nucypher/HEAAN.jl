@@ -70,3 +70,28 @@ function rns_plan(params::Params)
         res
     end
 end
+
+
+# TODO: replace with a macro?
+const _embedding_plans = IdDict{Params, EmbeddingPlan}()
+
+
+function embedding_plan(params::Params)
+    if haskey(_embedding_plans, params)
+        _embedding_plans[params]
+    else
+        res = EmbeddingPlan(2^params.log_polynomial_length)
+        _embedding_plans[params] = res
+        res
+    end
+end
+
+
+function embed(params::Params, vals::Array{Complex{Float64}, 1})
+    embed(embedding_plan(params), vals)
+end
+
+
+function unembed(params::Params, vals::Array{Complex{Float64}, 1})
+    unembed(embedding_plan(params), vals)
+end
