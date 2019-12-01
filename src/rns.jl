@@ -43,12 +43,24 @@ function to_rns(plan::RNSPlan, x::BigInt, np::Int)
 end
 
 
+function from_rns(plan::RNSPlan, rx::Array{UInt64, 1})
+    np = length(rx)
+    reconstruct_coeffs = plan.reconstruct_coeffs[np]
+
+    acc = zero(BigInt)
+    for i in 1:np
+        acc += reconstruct_coeffs[i] * rx[i]
+    end
+    mod(acc, plan.primes_prod[np])
+end
+
+
 function negate(x::UInt64, p::UInt64)
     iszero(x) ? x : p - x
 end
 
 
-function to_rns(plan::RNSPlan, x::BinModuloInt{T, Q}, np::Int) where {T, Q}
+function to_rns_signed(plan::RNSPlan, x::BinModuloInt{T, Q}, np::Int) where {T, Q}
     x_neg = signbit(x)
     if x_neg
         x = -x
@@ -62,19 +74,7 @@ function to_rns(plan::RNSPlan, x::BinModuloInt{T, Q}, np::Int) where {T, Q}
 end
 
 
-function from_rns(plan::RNSPlan, rx::Array{UInt64, 1})
-    np = length(rx)
-    reconstruct_coeffs = plan.reconstruct_coeffs[np]
-
-    acc = zero(BigInt)
-    for i in 1:np
-        acc += reconstruct_coeffs[i] * rx[i]
-    end
-    mod(acc, plan.primes_prod[np])
-end
-
-
-function from_rns(plan::RNSPlan, ::Type{BinModuloInt{T, Q}}, rx::Array{UInt64, 1}) where {T, Q}
+function from_rns_signed(plan::RNSPlan, ::Type{BinModuloInt{T, Q}}, rx::Array{UInt64, 1}) where {T, Q}
     np = length(rx)
     primes_prod_half = plan.primes_prod_half[np]
     primes_prod = plan.primes_prod[np]

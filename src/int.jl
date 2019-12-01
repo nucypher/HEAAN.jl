@@ -135,6 +135,10 @@ Base.:*(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
     BinModuloInt(normalize(x.value * y.value, Q), Q)
 
 
+Base.:(==)(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
+    x.value == y.value
+
+
 # TODO: check that it works correctly with all corner cases
 Base.:>>(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
     BinModuloInt{T, Q - shift}((x.value + (one(T) << (shift - 1))) >> shift)

@@ -1,4 +1,4 @@
-using HEAAN: RNSPlan, to_rns, from_rns, is_negative, nprimes_for_modulus
+using HEAAN: BinModuloInt, RNSPlan, to_rns, from_rns, to_rns_signed, from_rns_signed, nprimes_for_modulus
 
 
 @testgroup "RNS" begin
@@ -33,8 +33,11 @@ end
     p = prod(primes[1:nprimes])
     log_modulus = 9 # need 2^log_modulus <= p
 
+    tp = BinModuloInt{BigInt, log_modulus}
+
     for x in 0:2^log_modulus-1
-        x_rns = to_rns(plan, big(x), nprimes, log_modulus)
+        x_tp = convert(tp, x)
+        x_rns = to_rns_signed(plan, x_tp, nprimes)
 
         # Reference `x` transformed from all-positive to the signed range
         x_neg = is_negative(x, log_modulus) ? x - 2^log_modulus : x
@@ -44,9 +47,9 @@ end
             return
         end
 
-        x_back = from_rns(plan, x_rns, log_modulus)
+        x_back = from_rns_signed(plan, tp, x_rns)
 
-        if x_back != x
+        if x_back != x_tp
             @test_fail "Transforming $x, got $x_back back"
             return
         end

@@ -8,8 +8,7 @@ function to_rns(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where
     plen = length(x.coeffs)
     res = Array{UInt64}(undef, plen, np)
     for i in 1:plen
-        # TODO: to_rns() must handle BinModuloInt
-        res[i,:] .= to_rns(plan, x.coeffs[i], np)
+        res[i,:] .= to_rns_signed(plan, x.coeffs[i], np)
     end
     RNSPolynomial(plan, res)
 end
@@ -23,7 +22,7 @@ function from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial, np::
     plen = size(x.residuals, 1)
     res = Array{BinModuloInt{T, Q}}(undef, plen)
     for i in 1:plen
-        res[i] = from_rns(plan, BinModuloInt{T, Q}, x.residuals[i,:])
+        res[i] = from_rns_signed(plan, BinModuloInt{T, Q}, x.residuals[i,:])
     end
     Polynomial(res, true)
 end
