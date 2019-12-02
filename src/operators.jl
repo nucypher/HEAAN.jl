@@ -57,3 +57,21 @@ function mul(pk::PublicKeySet, cipher1::Ciphertext, cipher2::Ciphertext)
         cipher1.log_precision + cipher2.log_precision,
         cipher1.slots)
 end
+
+
+# TODO: do we even need this as a separate function?
+function mul_by_monomial(x::Polynomial, pwr::Integer)
+    shift_polynomial(x, pwr)
+end
+
+
+function imul(cipher::Ciphertext)
+    params = cipher.params
+    Ciphertext(
+        params,
+        mul_by_monomial(cipher.ax, 2^(params.log_polynomial_length - 1)),
+        mul_by_monomial(cipher.bx, 2^(params.log_polynomial_length - 1)),
+        cipher.log_cap,
+        cipher.log_precision,
+        cipher.slots)
+end

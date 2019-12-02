@@ -27,5 +27,6 @@ export EncryptionKey
 export PublicKeySet
 export add
 export mul
+export imul
 
 end
