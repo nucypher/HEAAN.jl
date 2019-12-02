@@ -17,6 +17,14 @@ struct Ciphertext
 end
 
 
+function compatible(c1::Ciphertext, c2::Ciphertext)
+    (c1.params == c2.params &&
+    c1.log_cap == c2.log_cap &&
+    c1.log_precision == c2.log_precision &&
+    c1.slots == c2.slots)
+end
+
+
 function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
     coeffs = rand(rng, zero(BigInt):((one(BigInt) << log_modulus) - one(BigInt)), dims...)
     Polynomial(BInModuloInt{BigInt, log_modulus}.(coeffs), true)

@@ -3,18 +3,6 @@ using HEAAN
 using HEAAN: hexfloat, MyRNG, randomComplexArray
 
 
-function compare_str(res::Float64, ref::Float64)
-    s = "$(hexfloat(res)) $(hexfloat(ref)) "
-
-    c = compare(res, ref)
-    if c == 0
-        "$s Exp mismatch!"
-    else
-        "$s $c bits match"
-    end
-end
-
-
 function coinciding_bits(x::Float64, y::Float64)
     log_diff = floor(Int, -log2(abs(x - y)))
     log_diff >= 0 ? log_diff : 0
@@ -65,4 +53,63 @@ function test_encrypt()
 end
 
 
-test_encrypt()
+function test_add()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 100
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+
+    mvec1 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec2 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+
+    cipher1 = encrypt(rng, enc_key, mvec1, log_precision, log_cap)
+    cipher2 = encrypt(rng, enc_key, mvec2, log_precision, log_cap)
+
+    cipher_res = add(cipher1, cipher2)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mvec1 .+ mvec2, dvec)
+
+end
+
+
+function test_mul()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 100
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    pk = PublicKeySet(rng, secret_key)
+    enc_key = pk.enc_key
+
+    mvec1 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec2 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+
+    cipher1 = encrypt(rng, enc_key, mvec1, log_precision, log_cap)
+    cipher2 = encrypt(rng, enc_key, mvec2, log_precision, log_cap)
+
+    cipher_res = mul(pk, cipher1, cipher2)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mvec1 .* mvec2, dvec)
+
+end
+
+
+#test_encrypt()
+#test_add()
+test_mul()

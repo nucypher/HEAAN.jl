@@ -47,8 +47,22 @@ function ntt_rns(x::RNSPolynomial; inverse::Bool=false)
 end
 
 
+function Base.:+(x::RNSPolynomial, y::RNSPolynomial)
+    # TODO: pick the minimum number of residuals for `x` and `y` for the result?
+    plan = x.plan
+    res = similar(x.residuals)
+    np = size(x.residuals, 2)
+    for j in 1:np
+        res[:,j] = addmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
+    end
+    RNSPolynomial(plan, res)
+end
+
+
 function Base.:*(x::RNSPolynomial, y::RNSPolynomial)
     # TODO: keep keys and such in M-representation, to speed up multiplication
+    # (although make sure `+` is still processed correctly)
+    # TODO: pick the minimum number of residuals for `x` and `y` for the result?
     plan = x.plan
     res = similar(x.residuals)
     np = size(x.residuals, 2)
@@ -82,3 +96,6 @@ Base.:-(x::AbstractArray, y::Polynomial{BinModuloInt{T, Q}}) where {T, Q} =
 
 Base.:>>(x::Polynomial{BinModuloInt{T, Q}}, shift::Integer) where {T, Q} =
     Polynomial(x.coeffs .>> shift, x.negacyclic)
+
+Base.:<<(x::Polynomial{BinModuloInt{T, Q}}, shift::Integer) where {T, Q} =
+    Polynomial(x.coeffs .<< shift, x.negacyclic)

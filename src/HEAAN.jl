@@ -15,6 +15,7 @@ include("polynomial.jl")
 include("secret_key.jl")
 include("public_key_set.jl")
 include("ciphertext.jl")
+include("operators.jl")
 
 export Params
 export Context
@@ -23,5 +24,8 @@ export PublicKeySet
 export encrypt
 export decrypt
 export EncryptionKey
+export PublicKeySet
+export add
+export mul
 
 end

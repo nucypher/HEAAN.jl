@@ -143,6 +143,9 @@ Base.:(==)(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
 Base.:>>(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
     BinModuloInt{T, Q - shift}((x.value + (one(T) << (shift - 1))) >> shift)
 
+Base.:<<(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
+    BinModuloInt{T, Q + shift}(x.value << shift)
+
 
 Base.string(x::BinModuloInt) = x.value
 Base.show(io::IO, x::BinModuloInt) = print(io, string(x))
