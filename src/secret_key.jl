@@ -60,14 +60,17 @@ function Base.:*(secret_key::SecretKey, pa::Polynomial{BinModuloInt{T, Q}}) wher
 end
 
 
-function square(secret_key::SecretKey)
-
+function as_polynomial(secret_key::SecretKey)
     params = secret_key.params
     tp = BinModuloInt{BigInt, params.log_lo_modulus}
     sk_poly = Polynomial(zeros(tp, 2^params.log_polynomial_length), true)
     for (power, minus_one) in secret_key.nonzero_entries
         sk_poly.coeffs[power] = minus_one ? -one(tp) : one(tp)
     end
+    sk_poly
+end
 
-    secret_key * sk_poly
+
+function square(secret_key::SecretKey)
+    as_polynomial(secret_key) * secret_key
 end
