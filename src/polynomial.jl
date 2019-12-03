@@ -109,6 +109,22 @@ function conjugate(x::Polynomial)
 end
 
 
+function mod_down_by(x::Polynomial{BinModuloInt{T, Q}}, dq::Int) where {T, Q}
+    Polynomial(trunc.(BinModuloInt{T, Q - dq}, x.coeffs), x.negacyclic)
+end
+
+
+function mod_down_to(x::Polynomial{BinModuloInt{T, Q}}, log_q::Int) where {T, Q}
+    Polynomial(trunc.(BinModuloInt{T, log_q}, x.coeffs), x.negacyclic)
+end
+
+
+# TODO: do we even need this as a separate function?
+function mul_by_monomial(x::Polynomial, pwr::Integer)
+    shift_polynomial(x, pwr)
+end
+
+
 # FIXME: these methods will not be necessary when Polynomial broadcasting
 # is implemented in DarkIntegers
 

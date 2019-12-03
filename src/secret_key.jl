@@ -72,5 +72,5 @@ end
 
 
 function square(secret_key::SecretKey, log_modulus::Int)
-    as_polynomial(secret_key, log_modulus) * secret_key
+    secret_key * as_polynomial(secret_key, log_modulus)
 end

@@ -1,6 +1,6 @@
 using Random
 using HEAAN
-using HEAAN: hexfloat, MyRNG, randomComplexArray
+using HEAAN: hexfloat, MyRNG, randomComplexArray, randomCircle, randomComplex
 
 
 function coinciding_bits(x::Float64, y::Float64)
@@ -190,9 +190,144 @@ function test_conj()
 
 end
 
+
+function test_power_of_2()
+
+    n = 2^6
+    log_degree = 4
+    degree = 2^log_degree
+    log_precision = 30
+    log_cap = 300
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    mvec = [randomCircle(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+
+    # Temporary replacement for bit-to-bit compatibility with the reference implementation.
+    #mpow = mvec .^ degree
+    mpow = copy(mvec)
+    for i in 1:degree-1
+        mpow .*= mvec
+    end
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = power_of_2(mul_key, cipher, log_precision, log_degree)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mpow, dvec)
+
+end
+
+
+function test_power()
+
+    n = 2^6
+    degree = 13
+    log_precision = 30
+    log_cap = 300
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    mvec = [randomCircle(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+
+    # Temporary replacement for bit-to-bit compatibility with the reference implementation.
+    #mpow = mvec .^ degree
+    mpow = copy(mvec)
+    for i in 1:degree-1
+        mpow .*= mvec
+    end
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = power(mul_key, cipher, log_precision, degree)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mpow, dvec)
+
+end
+
+
+function test_inverse()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+    steps = 6
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    # TODO: if one uses 1.0 instead of 0.1, the error becomes huge. Why?
+    mvec = [randomCircle(rng, 0.1) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    minv = 1 ./ mvec
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = inv(mul_key, cipher, log_precision, steps)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(minv, dvec)
+
+end
+
+
+function test_log()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+    degree = 7
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    mvec = [randomComplex(rng, 0.1) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mlog = log.(mvec .+ 1)
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = log_plus_one(mul_key, cipher, log_precision, degree)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mlog, dvec)
+
+end
+
+
 #test_encrypt()
 #test_add()
 #test_mul()
 #test_imul()
 #test_circshift()
-test_conj()
+#test_conj()
+#test_power_of_2()
+#test_power()
+#test_inverse()
+test_log()

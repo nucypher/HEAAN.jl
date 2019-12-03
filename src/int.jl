@@ -120,6 +120,10 @@ Base.convert(::Type{BinModuloInt{T, Q}}, x::Integer) where {T, Q} =
     BinModuloInt{T, Q}(normalize(big(x), Q))
 
 
+Base.trunc(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2} =
+    BinModuloInt{T, Q1}(x.value & all_bits_mask(BinModuloInt{T, Q1}))
+
+
 Base.:+(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
     BinModuloInt(normalize(x.value + y.value, Q), Q)
 

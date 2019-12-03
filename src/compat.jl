@@ -142,6 +142,13 @@ randomComplexArray(rng::MyRNG, n::Int, bound::Float64 = 1.0) =
     [randomComplex(rng, bound) for i in 1:n]
 
 
+function randomCircle(rng::MyRNG, anglebound::Float64 = 1.0)
+    angle_ = randomReal(rng, anglebound)
+    M_PI = Float64(pi)
+    mycos(angle_ * 2 * M_PI) + im * mysin(angle_ * 2 * M_PI)
+end
+
+
 function sampleUniform2(rng::MyRNG, bits::Int, N::Int)
     [myRandomBits_ZZ(rng, bits) for i in 1:N]
 end

@@ -16,6 +16,7 @@ include("secret_key.jl")
 include("public_key_set.jl")
 include("ciphertext.jl")
 include("operators.jl")
+include("algo.jl")
 
 export Params
 export Context
@@ -30,5 +31,9 @@ export PublicKeySet
 export add
 export mul
 export imul
+
+export power_of_2
+export power
+export log_plus_one
 
 end

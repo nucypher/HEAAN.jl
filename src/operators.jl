@@ -59,9 +59,147 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
-# TODO: do we even need this as a separate function?
-function mul_by_monomial(x::Polynomial, pwr::Integer)
-    shift_polynomial(x, pwr)
+function square(mk::MultiplicationKey, cipher::Ciphertext)
+
+    params = cipher.params
+    plan = rns_plan(params)
+
+    np = cld(2 + cipher.log_cap * 2 + params.log_polynomial_length + 2, 59)
+
+    ra = ntt_rns(to_rns(plan, cipher.ax, np))
+    rb = ntt_rns(to_rns(plan, cipher.bx, np))
+
+    tp = Polynomial{BinModuloInt{BigInt, cipher.log_cap}}
+    axax = from_rns(tp, ntt_rns(ra * ra, inverse=true), np)
+    bxbx = from_rns(tp, ntt_rns(rb * rb, inverse=true), np)
+    axbx = from_rns(tp, ntt_rns(ra * rb, inverse=true), np)
+    axbx = axbx + axbx
+
+    key = mk.key
+
+    np = cld(
+        cipher.log_cap + params.log_lo_modulus + params.log_hi_modulus +
+            params.log_polynomial_length + 2, 59)
+
+    raa = ntt_rns(to_rns(plan, axax, np))
+
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_lo_modulus}}
+    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true), np) >> params.log_lo_modulus
+    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true), np) >> params.log_lo_modulus
+
+    ax = ax + axbx
+    bx = bx + bxbx
+
+    Ciphertext(
+        params,
+        ax,
+        bx,
+        cipher.log_cap,
+        cipher.log_precision * 2,
+        cipher.slots)
+end
+
+
+function negate(cipher::Ciphertext)
+    Ciphertext(
+        cipher.params,
+        -cipher.ax,
+        -cipher.bx,
+        cipher.log_cap,
+        cipher.log_precision,
+        cipher.slots)
+end
+
+
+function mod_down_by(cipher::Ciphertext, dlog_cap::Int)
+    Ciphertext(
+        cipher.params,
+        mod_down_by(cipher.ax, dlog_cap),
+        mod_down_by(cipher.bx, dlog_cap),
+        cipher.log_cap - dlog_cap,
+        cipher.log_precision,
+        cipher.slots)
+end
+
+
+function mod_down_to(cipher::Ciphertext, log_cap::Int)
+    Ciphertext(
+        cipher.params,
+        mod_down_to(cipher.ax, log_cap),
+        mod_down_to(cipher.bx, log_cap),
+        log_cap,
+        cipher.log_precision,
+        cipher.slots)
+end
+
+
+function rescale_by(cipher::Ciphertext, dlog_cap::Int)
+    Ciphertext(
+        cipher.params,
+        cipher.ax >> dlog_cap,
+        cipher.bx >> dlog_cap,
+        cipher.log_cap - dlog_cap,
+        cipher.log_precision - dlog_cap,
+        cipher.slots)
+end
+
+
+function add_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64}, log_precision::Int)
+
+    # TODO: seems to be just for joining two functions into one - taking precision from ciphertext,
+    # or overriding it. Can be replaced by just a default parameter.
+    tp = BinModuloInt{BigInt, cipher.log_cap}
+    cnst_big = if log_precision < 0
+        float_to_integer(tp, cnst, cipher.log_precision)
+    else
+        float_to_integer(tp, cnst, log_precision)
+    end
+
+    Ciphertext(
+        cipher.params,
+        cipher.ax,
+        cipher.bx + cnst_big,
+        cipher.log_cap,
+        cipher.log_precision,
+        cipher.slots)
+end
+
+
+function mul_by_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64}, log_precision::Int)
+    tp = BinModuloInt{BigInt, cipher.log_cap}
+    cnst_big = float_to_integer(tp, cnst, log_precision)
+    Ciphertext(
+        cipher.params,
+        cipher.ax * cnst_big,
+        cipher.bx * cnst_big,
+        cipher.log_cap,
+        cipher.log_precision + log_precision,
+        cipher.slots)
+end
+
+
+function mul_by_const(cipher::Ciphertext, cnst::Complex{Float64}, log_precision::Int)
+    tp = BinModuloInt{BigInt, cipher.log_cap}
+    cnst_big_real = float_to_integer(tp, real(cnst), log_precision)
+    cnst_big_imag = float_to_integer(tp, imag(cnst), log_precision)
+
+    plen = 2^cipher.params.log_polynomial_length
+    ax = (
+        mul_by_monomial(cipher.ax * cnst_big_imag, plen ÷ 2)
+        + cipher.ax * cnst_big_real)
+    bx = (
+        mul_by_monomial(cipher.bx * cnst_big_imag, plen ÷ 2)
+        + cipher.bx * cnst_big_real)
+
+    # TODO: seems to be equivalent to mul(imul(c), cnst_imag) + mul(c, cnst_real)
+
+    Ciphertext(
+        cipher.params,
+        ax,
+        bx,
+        cipher.log_cap,
+        cipher.log_precision + log_precision,
+        cipher.slots)
 end
 
 
