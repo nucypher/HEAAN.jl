@@ -321,6 +321,91 @@ function test_log()
 end
 
 
+function test_exp()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+    degree = 7
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mexp = exp.(mvec)
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = exp(mul_key, cipher, log_precision, degree)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mexp, dvec)
+
+end
+
+
+function test_sigmoid()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+    degree = 7
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    msig = exp.(mvec) ./ (1 .+ exp.(mvec))
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = sigmoid(mul_key, cipher, log_precision, degree)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(msig, dvec)
+end
+
+
+function test_sigmoid_lazy()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+    degree = 7
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+
+    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    msig = exp.(mvec) ./ (1 .+ exp.(mvec))
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = sigmoid(mul_key, cipher, log_precision, degree, lazy=true)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(msig, dvec)
+end
+
+
 #test_encrypt()
 #test_add()
 #test_mul()
@@ -330,4 +415,7 @@ end
 #test_power_of_2()
 #test_power()
 #test_inverse()
-test_log()
+#test_log()
+#test_exp()
+#test_sigmoid()
+test_sigmoid_lazy()

@@ -86,7 +86,7 @@ function power_extended(mk::MultiplicationKey, cipher::Ciphertext, log_precision
 end
 
 
-function power_series(
+function power_series_eager(
         mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
         coeffs::Array{Float64, 1}, degree::Int)
 
@@ -107,8 +107,49 @@ function power_series(
 end
 
 
-log_plus_one(mk, cipher, log_precision, degree) =
+function power_series_lazy(
+        mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
+        coeffs::Array{Float64, 1}, degree::Int)
+
+    cpows = power_extended(mk, cipher, log_precision, degree)
+    dlogp = 2 * log_precision
+
+    res = mul_by_const(cpows[1], coeffs[2], log_precision)
+    res = add_const(res, coeffs[1], dlogp)
+
+    for i in 1:degree-1
+        if abs(coeffs[i + 2]) > 1e-27 # TODO: why this limit?
+            aixi = mul_by_const(cpows[i+1], coeffs[i + 2], log_precision)
+            res = mod_down_by(res, res.log_cap - aixi.log_cap)
+            res = add(res, aixi)
+        end
+    end
+
+    res
+end
+
+
+power_series(mk, cipher, log_precision, coeffs, degree; lazy::Bool=false) =
+    lazy ?
+        power_series_lazy(mk, cipher, log_precision, coeffs, degree) :
+        power_series_eager(mk, cipher, log_precision, coeffs, degree)
+
+
+log_plus_one(mk, cipher, log_precision, degree; lazy::Bool=false) =
     power_series(
         mk, cipher, log_precision, [0, 1, -0.5, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10],
-        degree)
+        degree, lazy=lazy)
 
+
+Base.exp(mk, cipher, log_precision, degree; lazy::Bool=false) =
+    power_series(
+        mk, cipher, log_precision,
+        [1, 1, 0.5, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800],
+        degree, lazy=lazy)
+
+
+sigmoid(mk, cipher, log_precision, degree; lazy::Bool=false) =
+    power_series(
+        mk, cipher, log_precision,
+        [1/2, 1/4, 0, -1/48, 0, 1/480, 0, -17/80640, 0, 31/1451520, 0],
+        degree, lazy=lazy)

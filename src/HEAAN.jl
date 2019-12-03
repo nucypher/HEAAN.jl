@@ -35,5 +35,6 @@ export imul
 export power_of_2
 export power
 export log_plus_one
+export sigmoid
 
 end
