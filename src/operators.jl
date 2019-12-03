@@ -10,7 +10,7 @@ function add(cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
-function mul(pk::PublicKeySet, cipher1::Ciphertext, cipher2::Ciphertext)
+function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     # TODO: technically, log_precision may differ?
     @assert compatible(cipher1, cipher2)
     # TODO: check compatibility with the public key as well
@@ -34,7 +34,7 @@ function mul(pk::PublicKeySet, cipher1::Ciphertext, cipher2::Ciphertext)
 
     axbx = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true), np)
 
-    key = pk.mul_key.key
+    key = key.key
 
     np = cld(
         cipher1.log_cap + params.log_lo_modulus + params.log_hi_modulus +
@@ -77,25 +77,6 @@ function imul(cipher::Ciphertext)
 end
 
 
-# TODO: seems to correspond to Rotate() in the paper?
-# Or does it refer to `circshift` itself?
-# "For an input encryption of m(Y), return an encryption of m(Y^(5^k)) in the same level"
-function left_rotate(x::Polynomial, r::Integer)
-    res = Polynomial(similar(x.coeffs), x.negacyclic)
-    n = length(x.coeffs)
-    pow = mod(5^r, 2n)
-    for i in 0:n-1
-        shift = mod(i * pow, 2n)
-        if shift < n
-            res.coeffs[shift+1] = x.coeffs[i+1]
-        else
-            res.coeffs[shift - n + 1] = -x.coeffs[i+1]
-        end
-    end
-    res
-end
-
-
 function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     params = cipher.params
     plan = rns_plan(params)
@@ -115,6 +96,32 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     ax = from_rns(tp_big, ntt_rns(rarot * rk.key.rax, inverse=true), np) >> params.log_lo_modulus
     bx = from_rns(tp_big, ntt_rns(rarot * rk.key.rbx, inverse=true), np) >> params.log_lo_modulus
     bx = bx + bxrot
+
+    Ciphertext(
+        params,
+        ax,
+        bx,
+        cipher.log_cap,
+        cipher.log_precision,
+        cipher.slots)
+end
+
+
+function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
+    params = cipher.params
+    plan = rns_plan(params)
+
+    axconj = conjugate(cipher.ax)
+    bxconj = conjugate(cipher.bx)
+
+    np = cld(cipher.log_cap + params.log_lo_modulus +
+        params.log_hi_modulus + params.log_polynomial_length + 2, 59)
+    raconj = ntt_rns(to_rns(plan, axconj, np))
+
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_lo_modulus}}
+    ax = from_rns(tp_big, ntt_rns(raconj * ck.key.rax, inverse=true), np) >> params.log_lo_modulus
+    bx = from_rns(tp_big, ntt_rns(raconj * ck.key.rbx, inverse=true), np) >> params.log_lo_modulus
+    bx = bx + bxconj
 
     Ciphertext(
         params,

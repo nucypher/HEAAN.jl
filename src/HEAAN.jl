@@ -25,6 +25,7 @@ export decrypt
 export EncryptionKey
 export MultiplicationKey
 export LeftRotationKey
+export ConjugationKey
 export PublicKeySet
 export add
 export mul

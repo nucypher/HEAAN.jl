@@ -92,8 +92,8 @@ function test_mul()
 
     secret_key = SecretKey(rng, params)
 
-    pk = PublicKeySet(rng, secret_key)
-    enc_key = pk.enc_key
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
 
     mvec1 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
     mvec2 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
@@ -101,7 +101,7 @@ function test_mul()
     cipher1 = encrypt(rng, enc_key, mvec1, log_precision, log_cap)
     cipher2 = encrypt(rng, enc_key, mvec2, log_precision, log_cap)
 
-    cipher_res = mul(pk, cipher1, cipher2)
+    cipher_res = mul(mul_key, cipher1, cipher2)
 
     dvec = decrypt(secret_key, cipher_res)
 
@@ -121,8 +121,7 @@ function test_imul()
 
     secret_key = SecretKey(rng, params)
 
-    pk = PublicKeySet(rng, secret_key)
-    enc_key = pk.enc_key
+    enc_key = EncryptionKey(rng, secret_key)
 
     mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
 
@@ -164,8 +163,36 @@ function test_circshift()
 
 end
 
+
+function test_conj()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    conj_key = ConjugationKey(rng, secret_key)
+
+    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = conj(conj_key, cipher)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(conj.(mvec), dvec)
+
+end
+
 #test_encrypt()
 #test_add()
 #test_mul()
 #test_imul()
-test_circshift()
+#test_circshift()
+test_conj()

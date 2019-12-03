@@ -82,6 +82,33 @@ function mult(x::T, y::RNSPolynomial, np::Int) where T <: Polynomial
 end
 
 
+# TODO: seems to correspond to Rotate() in the paper?
+# Or does it refer to `circshift` itself?
+# "For an input encryption of m(Y), return an encryption of m(Y^(5^k)) in the same level"
+function left_rotate(x::Polynomial, r::Integer)
+    res = Polynomial(similar(x.coeffs), x.negacyclic)
+    n = length(x.coeffs)
+    pow = mod(5^r, 2n)
+    for i in 0:n-1
+        shift = mod(i * pow, 2n)
+        if shift < n
+            res.coeffs[shift+1] = x.coeffs[i+1]
+        else
+            res.coeffs[shift - n + 1] = -x.coeffs[i+1]
+        end
+    end
+    res
+end
+
+
+function conjugate(x::Polynomial)
+    res = Polynomial(similar(x.coeffs), x.negacyclic)
+    res.coeffs[1] = x.coeffs[1]
+    res.coeffs[2:end] .= .-x.coeffs[end:-1:2]
+    res
+end
+
+
 # FIXME: these methods will not be necessary when Polynomial broadcasting
 # is implemented in DarkIntegers
 
