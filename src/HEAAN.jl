@@ -20,10 +20,11 @@ include("operators.jl")
 export Params
 export Context
 export SecretKey
-export PublicKeySet
 export encrypt
 export decrypt
 export EncryptionKey
+export MultiplicationKey
+export LeftRotationKey
 export PublicKeySet
 export add
 export mul

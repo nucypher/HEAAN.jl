@@ -75,3 +75,52 @@ function imul(cipher::Ciphertext)
         cipher.log_precision,
         cipher.slots)
 end
+
+
+# TODO: seems to correspond to Rotate() in the paper?
+# Or does it refer to `circshift` itself?
+# "For an input encryption of m(Y), return an encryption of m(Y^(5^k)) in the same level"
+function left_rotate(x::Polynomial, r::Integer)
+    res = Polynomial(similar(x.coeffs), x.negacyclic)
+    n = length(x.coeffs)
+    pow = mod(5^r, 2n)
+    for i in 0:n-1
+        shift = mod(i * pow, 2n)
+        if shift < n
+            res.coeffs[shift+1] = x.coeffs[i+1]
+        else
+            res.coeffs[shift - n + 1] = -x.coeffs[i+1]
+        end
+    end
+    res
+end
+
+
+function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
+    params = cipher.params
+    plan = rns_plan(params)
+
+    # TODO: handle positive shifts too (mod N?)
+    shift = -shift
+
+    axrot = left_rotate(cipher.ax, shift)
+    bxrot = left_rotate(cipher.bx, shift)
+
+    np = cld(cipher.log_cap + params.log_lo_modulus +
+        params.log_hi_modulus + params.log_polynomial_length + 2, 59)
+
+    rarot = ntt_rns(to_rns(plan, axrot, np))
+
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_lo_modulus}}
+    ax = from_rns(tp_big, ntt_rns(rarot * rk.key.rax, inverse=true), np) >> params.log_lo_modulus
+    bx = from_rns(tp_big, ntt_rns(rarot * rk.key.rbx, inverse=true), np) >> params.log_lo_modulus
+    bx = bx + bxrot
+
+    Ciphertext(
+        params,
+        ax,
+        bx,
+        cipher.log_cap,
+        cipher.log_precision,
+        cipher.slots)
+end

@@ -137,7 +137,35 @@ function test_imul()
 end
 
 
+function test_circshift()
+
+    n = 2^6
+    r = 2^4
+    log_precision = 30
+    log_cap = 100
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+    rot_key = LeftRotationKey(rng, secret_key, r)
+
+    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = circshift(rot_key, cipher, -r)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(circshift(mvec, -r), dvec)
+
+end
+
 #test_encrypt()
 #test_add()
 #test_mul()
-test_imul()
+#test_imul()
+test_circshift()
