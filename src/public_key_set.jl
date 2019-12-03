@@ -48,7 +48,7 @@ struct MultiplicationKey
 
         #gg = randn(rng, plen) * params.gaussian_noise_stddev
         gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
-        sxsx = square(secret_key) << params.log_lo_modulus
+        sxsx = square(secret_key) << params.log_hi_modulus
         bx = round.(Int, gg) - secret_key * ax + sxsx
 
         plan = rns_plan(params)
