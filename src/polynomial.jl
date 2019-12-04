@@ -119,6 +119,15 @@ function mod_down_to(x::Polynomial{BinModuloInt{T, Q}}, log_q::Int) where {T, Q}
 end
 
 
+function mod_up_to(x::Polynomial{BinModuloInt{T, Q}}, log_q::Int) where {T, Q}
+    # TODO: used only in bootstrap
+    # Two ways are possible: just increase the range,
+    # or keep negative numbers negative (that is x -> x - Q_old + Q_new).
+    # Not sure what is the right one.
+    Polynomial(convert.(BinModuloInt{T, log_q}, x.coeffs), x.negacyclic)
+end
+
+
 # TODO: do we even need this as a separate function?
 function mul_by_monomial(x::Polynomial, pwr::Integer)
     shift_polynomial(x, pwr)

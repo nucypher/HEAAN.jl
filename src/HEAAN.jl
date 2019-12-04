@@ -17,6 +17,7 @@ include("public_key_set.jl")
 include("ciphertext.jl")
 include("operators.jl")
 include("algo.jl")
+include("bootstrap.jl")
 
 export Params
 export Context
@@ -27,7 +28,6 @@ export EncryptionKey
 export MultiplicationKey
 export LeftRotationKey
 export ConjugationKey
-export PublicKeySet
 export add
 export mul
 export imul
@@ -36,5 +36,7 @@ export power_of_2
 export power
 export log_plus_one
 export sigmoid
+
+export BootstrapKey
 
 end

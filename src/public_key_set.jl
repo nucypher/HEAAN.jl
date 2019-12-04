@@ -80,7 +80,7 @@ struct LeftRotationKey
         gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
         bx = round.(Int, gg) - secret_key * ax
 
-        spow = left_rotate(as_polynomial(secret_key), shift) << params.log_hi_modulus
+        spow = left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift) << params.log_hi_modulus
         bx = bx + spow
 
         plan = rns_plan(params)
@@ -122,19 +122,3 @@ struct ConjugationKey
         new(params, PublicKeyRNS(rax, rbx))
     end
 end
-
-
-struct PublicKeySet
-
-    enc_key :: EncryptionKey
-    mul_key :: MultiplicationKey
-    #conj_key :: ConjugationKey
-    #left_rot_keys :: Dict{Int, LeftRotationKey}
-
-    function PublicKeySet(rng::AbstractRNG, secret_key::SecretKey)
-        enc_key = EncryptionKey(rng, secret_key)
-        mul_key = MultiplicationKey(rng, secret_key)
-        new(enc_key, mul_key)
-    end
-end
-

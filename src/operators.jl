@@ -10,6 +10,18 @@ function add(cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
+function sub(cipher1::Ciphertext, cipher2::Ciphertext)
+    @assert compatible(cipher1, cipher2)
+    Ciphertext(
+        cipher1.params,
+        cipher1.ax - cipher2.ax,
+        cipher1.bx - cipher2.bx,
+        cipher1.log_cap,
+        cipher1.log_precision,
+        cipher1.slots)
+end
+
+
 function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     # TODO: technically, log_precision may differ?
     @assert compatible(cipher1, cipher2)
@@ -221,6 +233,8 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
 
     # TODO: handle positive shifts too (mod N?)
     shift = -shift
+
+    @assert rk.shift == shift
 
     axrot = left_rotate(cipher.ax, shift)
     bxrot = left_rotate(cipher.bx, shift)

@@ -15,6 +15,14 @@ struct Ciphertext
     log_cap :: Int
     log_precision :: Int
     slots :: Int
+
+    function Ciphertext(
+            params::Params, ax::Polynomial{BinModuloInt{T, Q}},
+            bx::Polynomial{BinModuloInt{T, Q}},
+            log_cap::Int, log_precision::Int, slots::Int) where {T, Q}
+        @assert log_cap == Q
+        new(params, ax, bx, log_cap, log_precision, slots)
+    end
 end
 
 

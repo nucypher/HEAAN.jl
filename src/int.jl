@@ -99,6 +99,9 @@ struct BinModuloInt{T, Q} <: Number
 end
 
 
+num_bits(x::BinModuloInt) = num_bits(x.value)
+
+
 all_bits_mask(::Type{BinModuloInt{T, Q}}) where {T, Q} = all_bits_mask(T, Q)
 modulus(::Type{BinModuloInt{T, Q}}) where {T, Q} = modulus(T, Q)
 high_bit_mask(::Type{BinModuloInt{T, Q}}) where {T, Q} = high_bit_mask(T, Q)
@@ -120,8 +123,19 @@ Base.convert(::Type{BinModuloInt{T, Q}}, x::Integer) where {T, Q} =
     BinModuloInt{T, Q}(normalize(big(x), Q))
 
 
-Base.trunc(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2} =
+# TODO: check that it works correctly with negative numbers
+# TODO: actually, `trunc` is not the right function to use here - for numbers is assumes that
+# the number is in the final range already.
+# Need our own function.
+function Base.trunc(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
+    @assert Q1 <= Q2
     BinModuloInt{T, Q1}(x.value & all_bits_mask(BinModuloInt{T, Q1}))
+end
+
+function Base.convert(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
+    @assert Q1 >= Q2
+    BinModuloInt{T, Q1}(x.value)
+end
 
 
 Base.:+(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =

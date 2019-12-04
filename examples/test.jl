@@ -406,6 +406,78 @@ function test_sigmoid_lazy()
 end
 
 
+function test_bootstrap()
+
+    rng = MyRNG(12345)
+
+    log_t = 4 # means that we use Taylor approximation in [-1/t,1/t] with double angle fomula
+    log_n = 3
+    n = 2^log_n
+    log_precision = 20
+    log_cap = 30
+
+    params = Params(log_polynomial_length=8, log_lo_modulus=600)
+    log_plen = params.log_polynomial_length
+
+    secret_key = SecretKey(rng, params)
+    enc_key = EncryptionKey(rng, secret_key)
+    mul_key = MultiplicationKey(rng, secret_key)
+    conj_key = ConjugationKey(rng, secret_key)
+
+    bk = BootstrapKey(rng, secret_key, enc_key, mul_key, conj_key, log_n)
+    bc = HEAAN.BootContext(params, log_n, log_cap + 4) # TODO: why + 4?
+
+    mvec = randomComplexArray(rng, n)
+
+    cipher = encrypt(rng, bk.enc_key, mvec, log_precision, log_cap)
+
+    println("cipher log_cap before: ", cipher.log_cap)
+
+    cipher = HEAAN.mod_down_to(cipher, log_cap) # TODO: is it really necessary? it's already log_cap
+
+    # TODO: check that polynomial caps correspond to the given log_cap
+    cipher = HEAAN.Ciphertext(
+        params,
+        HEAAN.mod_up_to(cipher.ax, params.log_lo_modulus),
+        HEAAN.mod_up_to(cipher.bx, params.log_lo_modulus),
+        params.log_lo_modulus,
+        log_cap + 4,
+        n)
+
+    println("SubSum")
+    for i in log_n:params.log_polynomial_length-2
+        rot = circshift(bk.rot_keys[1 << i], cipher, -(1 << i))
+        cipher = add(cipher, rot)
+    end
+
+    cipher = HEAAN.div_by_po2(cipher, log_plen - 1)
+
+    println("CoeffToSlot")
+    cipher = HEAAN.coeff_to_slot(bk, bc, cipher)
+
+    println("EvalExp")
+    cipher = HEAAN.eval_exp(bk, bc, cipher, log_t)
+
+    println("SlotToCoeff")
+    cipher = HEAAN.slot_to_coeff(bk, bc, cipher)
+
+    cipher = HEAAN.Ciphertext(
+        params,
+        cipher.ax,
+        cipher.bx,
+        cipher.log_cap,
+        log_precision,
+        cipher.slots
+        )
+
+    println("cipher log_cap after: ", cipher.log_cap)
+
+    dvec = decrypt(secret_key, cipher)
+
+    print_statistics(mvec, dvec)
+end
+
+
 #test_encrypt()
 #test_add()
 #test_mul()
@@ -418,4 +490,5 @@ end
 #test_log()
 #test_exp()
 #test_sigmoid()
-test_sigmoid_lazy()
+#test_sigmoid_lazy()
+test_bootstrap()
