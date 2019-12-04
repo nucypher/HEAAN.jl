@@ -191,27 +191,9 @@ end
 
 
 function mul_by_const(cipher::Ciphertext, cnst::Complex{Float64}, log_precision::Int)
-    tp = BinModuloInt{BigInt, cipher.log_cap}
-    cnst_big_real = float_to_integer(tp, real(cnst), log_precision)
-    cnst_big_imag = float_to_integer(tp, imag(cnst), log_precision)
-
-    plen = 2^cipher.params.log_polynomial_length
-    ax = (
-        mul_by_monomial(cipher.ax * cnst_big_imag, plen ÷ 2)
-        + cipher.ax * cnst_big_real)
-    bx = (
-        mul_by_monomial(cipher.bx * cnst_big_imag, plen ÷ 2)
-        + cipher.bx * cnst_big_real)
-
-    # TODO: seems to be equivalent to mul(imul(c), cnst_imag) + mul(c, cnst_real)
-
-    Ciphertext(
-        cipher.params,
-        ax,
-        bx,
-        cipher.log_cap,
-        cipher.log_precision + log_precision,
-        cipher.slots)
+    add(
+        mul_by_const(cipher, real(cnst), log_precision),
+        imul(mul_by_const(cipher, imag(cnst), log_precision)))
 end
 
 

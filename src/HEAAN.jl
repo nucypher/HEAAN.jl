@@ -31,6 +31,7 @@ export ConjugationKey
 export add
 export mul
 export imul
+export mul_by_const
 
 export power_of_2
 export power
