@@ -38,13 +38,13 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     rb2 = ntt_rns(to_rns(plan, cipher2.bx, np))
 
     tp = Polynomial{BinModuloInt{BigInt, cipher1.log_cap}}
-    axax = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true), np)
-    bxbx = from_rns(tp, ntt_rns(rb1 * rb2, inverse=true), np)
+    axax = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true))
+    bxbx = from_rns(tp, ntt_rns(rb1 * rb2, inverse=true))
 
     ra1 = ra1 + rb1
     ra2 = ra2 + rb2
 
-    axbx = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true), np)
+    axbx = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true))
 
     key = key.key
 
@@ -54,9 +54,20 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
 
     raa = ntt_rns(to_rns(plan, axax, np))
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher1.log_cap + params.log_lo_modulus}}
-    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true), np) >> params.log_lo_modulus
-    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true), np) >> params.log_lo_modulus
+    #=
+    In the paper, we want to find `(P^(-1) * x * y) mod q`,
+    where `P = 2^log_hi_modulus`, `Q = 2^log_lo_modulus`, `x` is a polynomial modulo `q <= Q`,
+    and `y` is a polynomial modulo `P * Q`.
+
+    So, we perform the multiplication using the full range `q * Q * P`
+    (times the polynomial length to prevent overflow during NTT in RNS),
+    then drop the high `Q` bits (during the conversion from RNS to big integer),
+    then shift by `P`.
+    =#
+
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher1.log_cap + params.log_hi_modulus}}
+    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true)) >> params.log_hi_modulus
+    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true)) >> params.log_hi_modulus
 
     ax = ax + axbx - bxbx - axax
     bx = bx + bxbx
@@ -82,9 +93,9 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
     rb = ntt_rns(to_rns(plan, cipher.bx, np))
 
     tp = Polynomial{BinModuloInt{BigInt, cipher.log_cap}}
-    axax = from_rns(tp, ntt_rns(ra * ra, inverse=true), np)
-    bxbx = from_rns(tp, ntt_rns(rb * rb, inverse=true), np)
-    axbx = from_rns(tp, ntt_rns(ra * rb, inverse=true), np)
+    axax = from_rns(tp, ntt_rns(ra * ra, inverse=true))
+    bxbx = from_rns(tp, ntt_rns(rb * rb, inverse=true))
+    axbx = from_rns(tp, ntt_rns(ra * rb, inverse=true))
     axbx = axbx + axbx
 
     key = mk.key
@@ -95,9 +106,9 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
 
     raa = ntt_rns(to_rns(plan, axax, np))
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_lo_modulus}}
-    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true), np) >> params.log_lo_modulus
-    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true), np) >> params.log_lo_modulus
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_hi_modulus}}
+    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true)) >> params.log_hi_modulus
+    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true)) >> params.log_hi_modulus
 
     ax = ax + axbx
     bx = bx + bxbx
@@ -226,9 +237,9 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
 
     rarot = ntt_rns(to_rns(plan, axrot, np))
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_lo_modulus}}
-    ax = from_rns(tp_big, ntt_rns(rarot * rk.key.rax, inverse=true), np) >> params.log_lo_modulus
-    bx = from_rns(tp_big, ntt_rns(rarot * rk.key.rbx, inverse=true), np) >> params.log_lo_modulus
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_hi_modulus}}
+    ax = from_rns(tp_big, ntt_rns(rarot * rk.key.rax, inverse=true)) >> params.log_hi_modulus
+    bx = from_rns(tp_big, ntt_rns(rarot * rk.key.rbx, inverse=true)) >> params.log_hi_modulus
     bx = bx + bxrot
 
     Ciphertext(
@@ -252,9 +263,9 @@ function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
         params.log_hi_modulus + params.log_polynomial_length + 2, 59)
     raconj = ntt_rns(to_rns(plan, axconj, np))
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_lo_modulus}}
-    ax = from_rns(tp_big, ntt_rns(raconj * ck.key.rax, inverse=true), np) >> params.log_lo_modulus
-    bx = from_rns(tp_big, ntt_rns(raconj * ck.key.rbx, inverse=true), np) >> params.log_lo_modulus
+    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_hi_modulus}}
+    ax = from_rns(tp_big, ntt_rns(raconj * ck.key.rax, inverse=true)) >> params.log_hi_modulus
+    bx = from_rns(tp_big, ntt_rns(raconj * ck.key.rbx, inverse=true)) >> params.log_hi_modulus
     bx = bx + bxconj
 
     Ciphertext(

@@ -1,8 +1,8 @@
 struct Params
 
     log_polynomial_length :: Int # in HEAAN: N
-    log_lo_modulus :: Int # in HEAAN: logQ
-    log_hi_modulus :: Int # in HEAAN: == logQ
+    log_lo_modulus :: Int # in HEAAN: logQ, q_L in the paper
+    log_hi_modulus :: Int # in HEAAN: == logQ, P in the paper
     gaussian_noise_stddev :: Float64 # in HEAAN: sigma
     secret_key_length :: Int # in HEAAN: h
 

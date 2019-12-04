@@ -17,7 +17,7 @@ end
 to_rns(plan::RNSPlan, x::Polynomial) = to_rns(plan, x, length(plan.primes))
 
 
-function from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial, np::Int) where {T, Q}
+function from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial) where {T, Q}
     plan = x.plan
     plen = size(x.residuals, 1)
     res = Array{BinModuloInt{T, Q}}(undef, plen)
@@ -78,7 +78,7 @@ function mult(x::T, y::RNSPolynomial, np::Int) where T <: Polynomial
     plan = y.plan
     x_rns = ntt_rns(to_rns(plan, x, np), inverse=false)
     res_rns = ntt_rns(x_rns * y, inverse=true)
-    from_rns(T, res_rns, np)
+    from_rns(T, res_rns)
 end
 
 
