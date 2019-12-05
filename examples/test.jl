@@ -103,11 +103,7 @@ function test_add_const()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(
-        #im * (im * (mvec + real(mconst)) - imag(mconst)),
-        mvec .+ mconst,
-        dvec)
-
+    print_statistics(mvec .+ mconst, dvec)
 end
 
 
@@ -528,6 +524,8 @@ function test_bootstrap()
     n = 2^log_n
     log_precision = 20
     log_cap = 30
+    # TODO (see issue #1): why are we setting boot context precision as `log_cap + 4`?
+    bc_precision = log_cap + 4
 
     params = Params(log_polynomial_length=8, log_lo_modulus=600)
     log_plen = params.log_polynomial_length
@@ -537,60 +535,24 @@ function test_bootstrap()
     mul_key = MultiplicationKey(rng, secret_key)
     conj_key = ConjugationKey(rng, secret_key)
 
-    bk = BootstrapKey(rng, secret_key, enc_key, mul_key, conj_key, log_n)
-    bc = HEAAN.BootContext(params, log_n, log_cap + 4) # TODO: why + 4?
+    bk = BootstrapKey(rng, secret_key, enc_key, mul_key, conj_key, log_n, bc_precision)
 
     mvec = randomComplexArray(rng, n)
 
     cipher = encrypt(rng, bk.enc_key, mvec, log_precision, log_cap)
 
-    println("cipher log_cap before: ", cipher.log_cap)
+    println("Before: log_cap=$(cipher.log_cap) log_precision=$(cipher.log_precision)")
 
-    cipher = HEAAN.mod_down_to(cipher, log_cap) # TODO: is it really necessary? it's already log_cap
+    cipher = bootstrap(bk, cipher, log_t)
 
-    # TODO: check that polynomial caps correspond to the given log_cap
-    cipher = HEAAN.Ciphertext(
-        params,
-        HEAAN.mod_up_to(cipher.ax, params.log_lo_modulus),
-        HEAAN.mod_up_to(cipher.bx, params.log_lo_modulus),
-        params.log_lo_modulus,
-        log_cap + 4,
-        n)
-
-    println("SubSum")
-    for i in log_n:params.log_polynomial_length-2
-        rot = circshift(bk.rot_keys[1 << i], cipher, -(1 << i))
-        cipher = add(cipher, rot)
-    end
-
-    cipher = HEAAN.div_by_po2(cipher, log_plen - 1)
-
-    println("CoeffToSlot")
-    cipher = HEAAN.coeff_to_slot(bk, bc, cipher)
-
-    println("EvalExp")
-    cipher = HEAAN.eval_exp(bk, bc, cipher, log_t)
-
-    println("SlotToCoeff")
-    cipher = HEAAN.slot_to_coeff(bk, bc, cipher)
-
-    cipher = HEAAN.Ciphertext(
-        params,
-        cipher.ax,
-        cipher.bx,
-        cipher.log_cap,
-        log_precision,
-        cipher.slots
-        )
-
-    println("cipher log_cap after: ", cipher.log_cap)
+    println("After: log_cap=$(cipher.log_cap) log_precision=$(cipher.log_precision)")
 
     dvec = decrypt(secret_key, cipher)
 
     print_statistics(mvec, dvec)
 end
 
-
+#=
 test_encrypt()
 test_add()
 test_add_const()

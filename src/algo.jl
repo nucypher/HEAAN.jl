@@ -27,15 +27,15 @@ end
 
 function Base.inv(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, steps::Int)
     cbar = negate(cipher)
-    cbar = add_const(cbar, 1.0, log_precision)
+    cbar = add_const(cbar, 1.0)
     cpow = cbar
-    tmp = add_const(cbar, 1.0, log_precision)
+    tmp = add_const(cbar, 1.0)
     tmp = mod_down_by(tmp, log_precision)
     res = tmp
     for i in 1:steps-1
         cpow = square(mk, cpow)
         cpow = rescale_by(cpow, log_precision)
-        tmp = add_const(cpow, 1.0, log_precision)
+        tmp = add_const(cpow, 1.0)
         tmp = mul(mk, tmp, res)
         tmp = rescale_by(tmp, log_precision)
         res = tmp
@@ -91,10 +91,9 @@ function power_series_eager(
         coeffs::Array{Float64, 1}, degree::Int)
 
     cpows = power_extended(mk, cipher, log_precision, degree)
-    dlogp = 2 * log_precision
 
     res = mul_by_const(cpows[1], coeffs[2], log_precision)
-    res = add_const(res, coeffs[1], dlogp)
+    res = add_const(res, coeffs[1])
 
     for i in 1:degree-1
         if abs(coeffs[i + 2]) > 1e-27 # TODO: why this limit?
@@ -112,10 +111,9 @@ function power_series_lazy(
         coeffs::Array{Float64, 1}, degree::Int)
 
     cpows = power_extended(mk, cipher, log_precision, degree)
-    dlogp = 2 * log_precision
 
     res = mul_by_const(cpows[1], coeffs[2], log_precision)
-    res = add_const(res, coeffs[1], dlogp)
+    res = add_const(res, coeffs[1])
 
     for i in 1:degree-1
         if abs(coeffs[i + 2]) > 1e-27 # TODO: why this limit?

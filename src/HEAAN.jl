@@ -41,5 +41,6 @@ export log_plus_one
 export sigmoid
 
 export BootstrapKey
+export bootstrap
 
 end

@@ -1,52 +1,3 @@
-struct BootstrapKey
-
-    enc_key :: EncryptionKey
-    mul_key :: MultiplicationKey
-    conj_key :: ConjugationKey
-    rot_keys :: Dict{Int, LeftRotationKey}
-    log_slots :: Int
-
-    function BootstrapKey(
-            rng::AbstractRNG, secret_key::SecretKey,
-            enc_key::EncryptionKey, mul_key::MultiplicationKey, conj_key::ConjugationKey,
-            log_slots::Int)
-
-        params = secret_key.params
-        log_plen = params.log_polynomial_length
-
-        # TODO: build a set of required shifts first, and then create the keys
-
-        rot_keys = Dict{Int, LeftRotationKey}()
-
-        for i in 0:log_plen-2
-            idx = 1 << i
-            if !haskey(rot_keys, idx)
-                rot_keys[idx] = LeftRotationKey(rng, secret_key, idx)
-            end
-        end
-
-        loglh = log_slots ÷ 2
-        k = 1 << loglh
-        m = 1 << (log_slots - loglh)
-
-        for i in 1:k-1
-            if !haskey(rot_keys, i)
-                rot_keys[i] = LeftRotationKey(rng, secret_key, i)
-            end
-        end
-
-        for i in 1:m-1
-            idx = i * k
-            if !haskey(rot_keys, idx)
-                rot_keys[idx] = LeftRotationKey(rng, secret_key, idx)
-            end
-        end
-
-        new(enc_key, mul_key, conj_key, rot_keys, log_slots)
-    end
-end
-
-
 struct BootContext
 
     rpvec :: Array{RNSPolynomial, 1}
@@ -189,6 +140,11 @@ struct BootContext
                 end
             end
 
+            # These will be unused
+            rp1 = RNSPolynomial(r_plan, Array{UInt64}(undef, plen, 1))
+            bnd1 = 0
+            rp2 = RNSPolynomial(r_plan, Array{UInt64}(undef, plen, 1))
+            bnd2 = 0
         end
 
         for ki in 0:k:slots-1
@@ -223,6 +179,58 @@ struct BootContext
         new(rpvec, rpvecInv, rp1, rp2, bndvec, bndvecInv, bnd1, bnd2, log_precision, log_slots)
     end
 
+end
+
+
+struct BootstrapKey
+
+    enc_key :: EncryptionKey
+    mul_key :: MultiplicationKey
+    conj_key :: ConjugationKey
+    rot_keys :: Dict{Int, LeftRotationKey}
+    log_slots :: Int
+    bc :: BootContext
+
+    function BootstrapKey(
+            rng::AbstractRNG, secret_key::SecretKey,
+            enc_key::EncryptionKey, mul_key::MultiplicationKey, conj_key::ConjugationKey,
+            log_slots::Int, log_precision::Int)
+
+        params = secret_key.params
+        log_plen = params.log_polynomial_length
+
+        # TODO: build a set of required shifts first, and then create the keys
+
+        rot_keys = Dict{Int, LeftRotationKey}()
+
+        for i in 0:log_plen-2
+            idx = 1 << i
+            if !haskey(rot_keys, idx)
+                rot_keys[idx] = LeftRotationKey(rng, secret_key, idx)
+            end
+        end
+
+        loglh = log_slots ÷ 2
+        k = 1 << loglh
+        m = 1 << (log_slots - loglh)
+
+        for i in 1:k-1
+            if !haskey(rot_keys, i)
+                rot_keys[i] = LeftRotationKey(rng, secret_key, i)
+            end
+        end
+
+        for i in 1:m-1
+            idx = i * k
+            if !haskey(rot_keys, idx)
+                rot_keys[idx] = LeftRotationKey(rng, secret_key, idx)
+            end
+        end
+
+        bc = BootContext(params, log_slots, log_precision)
+
+        new(enc_key, mul_key, conj_key, rot_keys, log_slots, bc)
+    end
 end
 
 
@@ -339,48 +347,49 @@ function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
 end
 
 
-# TODO: can we use power_series() here?
-# TODO: is using BigFloat here necessary? If not, we can remove all BigFloat-related machinery
 function exp2pi(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int)
-    Pi = BigFloat(pi)
+    Pi = Float64(pi)
 
-    cipher2 = square(mk, cipher)
-    cipher2 = rescale_by(cipher2, log_precision) # cipher2.log_cap : log_cap - log_precision
+    # Cipher: log_precision, log_cap = (p, q); log_precision = l
 
-    cipher4 = square(mk, cipher2)
-    cipher4 = rescale_by(cipher4, log_precision) # cipher4.log_cap : log_cap -2log_precision
+    cipher2 = square(mk, cipher) # (2p, q)
+    cipher2 = rescale_by(cipher2, log_precision) # (2p - l, q - l)
+
+    cipher4 = square(mk, cipher2) # (4p - 2l, q - l)
+    cipher4 = rescale_by(cipher4, log_precision) # (4p - 3l, q - 2l)
     c = 1/(2 * Pi)
-    cipher01 = add_const(cipher, c, log_precision) # cipher01.log_cap : log_cap
+    cipher01 = add_const(cipher, c) # (p, q)
 
     c = 2*Pi
-    cipher01 = mul_by_const(cipher01, c, log_precision)
-    cipher01 = rescale_by(cipher01, log_precision) # cipher01.log_cap : log_cap - log_precision
+    cipher01 = mul_by_const(cipher01, c, log_precision) # (p + l, q)
+    cipher01 = rescale_by(cipher01, log_precision) # (p, q - l)
 
     c = 3/(2*Pi)
-    cipher23 = add_const(cipher, c, log_precision) # cipher23.log_cap : log_cap
+    cipher23 = add_const(cipher, c) # (p, q)
 
     c = 4*Pi*Pi*Pi/3
-    cipher23 = mul_by_const(cipher23, c, log_precision)
-    cipher23 = rescale_by(cipher23, log_precision) # cipher23.log_cap : log_cap - log_precision
+    cipher23 = mul_by_const(cipher23, c, log_precision) # (p + l, q)
+    cipher23 = rescale_by(cipher23, log_precision) # (p, q - l)
 
-    cipher23 = mul(mk, cipher23, cipher2)
-    cipher23 = rescale_by(cipher23, log_precision) # cipher23.log_cap : log_cap - 2log_precision
+    cipher23 = mul(mk, cipher23, cipher2) # (p, q - l) * (2p - l, q - l) = (3p - l, q - l)
+    cipher23 = rescale_by(cipher23, log_precision) # (3p - 2l, q - 2l)
 
-    # TODO: how justified is mod_down_to() here? In the original these two ciphertext are
-    # just added without regard to different log_caps, and the log_cap of cipher23 is used for
-    # the result (which is smaller than that of cipher01).
+    # TODO (see issue #1): how justified is mod_down_to() here? In the original these two
+    # ciphertexts are just added without regard to different log_caps, and the log_cap of
+    # cipher23 is used for the result (which is smaller than that of cipher01).
     # So we have an inconsistent Ciphertext in the output, but somehow it works out...
-    cipher23 = add(cipher23, mod_down_to(cipher01, cipher23.log_cap)) # cipher23.log_cap : log_cap - 2log_precision
+    # (3p - 2l, q - 2l) + (p, q)
+    cipher23 = add(cipher23, mod_down_to(cipher01, cipher23.log_cap))
 
     c = 5/(2*Pi)
-    cipher45 = add_const(cipher, c, log_precision) # cipher45.log_cap : log_cap
+    cipher45 = add_const(cipher, c) # (p, q)
 
     c = 4*Pi*Pi*Pi*Pi*Pi/15
     cipher45 = mul_by_const(cipher45, c, log_precision)
     cipher45 = rescale_by(cipher45, log_precision) # cipher45.log_cap : log_cap - log_precision
 
     c = 7/(2*Pi)
-    cipher = add_const(cipher, c, log_precision) # cipher.log_cap : log_cap
+    cipher = add_const(cipher, c) # cipher.log_cap : log_cap
 
     c = 8*Pi*Pi*Pi*Pi*Pi*Pi*Pi/315
     cipher = mul_by_const(cipher, c, log_precision)
@@ -402,7 +411,6 @@ function exp2pi(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int)
 end
 
 
-# TODO: what is log_i for?
 function eval_exp(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, log_t::Int, log_i::Int=4)
     slots = cipher.slots
     log_slots = trailing_zeros(slots) # TODO: assuming slots is a power of 2
@@ -431,12 +439,12 @@ function eval_exp(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, log_t::
         tmprot = circshift(bk.rot_keys[slots], cipher, -slots)
         cipher = add(cipher, tmprot)
         cipher = add(cipher, tmp)
-    else # TODO: check this branch
+    else # TODO (see issue #1): check this branch
         tmp = conj(ck, cipher)
         c2 = sub(cipher, tmp)
         cipher = add(cipher, tmp)
         cipher = imul(cipher)
-        cihper = div_by_po2(cipher, log_t + 1) # cipher bitDown: log_t + 1
+        cipher = div_by_po2(cipher, log_t + 1) # cipher bitDown: log_t + 1
         c2 = rescale_by(c2, log_t + 1) # c2 bitDown: log_t + 1
         cipher = exp2pi(mk, cipher, bc.log_precision) # cipher bitDown: log_t + 1 + 3(log_cap + log_i)
         c2 = exp2pi(mk, c2, bc.log_precision) # c2 bitDown: log_t + 1 + 3(log_cap + log_i)
@@ -452,9 +460,50 @@ function eval_exp(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, log_t::
         cipher = sub(cipher, tmp)
         cipher = imul(cipher)
         cipher = sub(c2, cipher)
-        c = 0.25/Pi
+        c = 0.25/pi
         cipher = mul_by_const(cipher, c, bc.log_precision)
     end
     rescale_by(cipher, bc.log_precision + log_i)
 end
 
+
+#=
+The theory behind this is explained in
+"Improved Bootstrapping for Approximate Homomorphic Encryption", Cheon et al (2018),
+Section 2.2.
+=#
+function bootstrap(bk::BootstrapKey, cipher::Ciphertext, log_t::Int=4)
+
+    @assert 2^bk.log_slots == cipher.slots
+    params = cipher.params
+
+    log_plen = params.log_polynomial_length
+    orig_log_precision = cipher.log_precision
+
+    # TODO: check that bk.bc.log_precision >= cipher.log_precision?
+    cipher = Ciphertext(
+        params,
+        mod_up_to(cipher.ax, params.log_lo_modulus),
+        mod_up_to(cipher.bx, params.log_lo_modulus),
+        params.log_lo_modulus,
+        bk.bc.log_precision,
+        cipher.slots)
+
+    for i in bk.log_slots:log_plen-2
+        rot = circshift(bk.rot_keys[1 << i], cipher, -(1 << i))
+        cipher = add(cipher, rot)
+    end
+
+    cipher = div_by_po2(cipher, log_plen - 1)
+    cipher = coeff_to_slot(bk, bk.bc, cipher)
+    cipher = eval_exp(bk, bk.bc, cipher, log_t)
+    cipher = slot_to_coeff(bk, bk.bc, cipher)
+
+    Ciphertext(
+        params,
+        cipher.ax,
+        cipher.bx,
+        cipher.log_cap,
+        orig_log_precision,
+        cipher.slots)
+end
