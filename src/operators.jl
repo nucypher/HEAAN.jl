@@ -220,6 +220,31 @@ function imul(cipher::Ciphertext)
 end
 
 
+function mul_by_const_vec(cipher::Ciphertext, v::Array{Complex{Float64}, 1}, log_precision::Int)
+    p = encode(cipher.params, v, log_precision, cipher.log_cap)
+    mul_by_plaintext(cipher, p)
+end
+
+
+function mul_by_plaintext(cipher::Ciphertext, p::Plaintext)
+    params = cipher.params
+    bnd = maximum(num_bits.(p.polynomial.coeffs))
+    np = cld(cipher.log_cap + bnd + params.log_polynomial_length + 2, 59)
+
+    plan = rns_plan(params)
+    rpoly = ntt_rns(to_rns(plan, p.polynomial, np))
+
+    # TODO: use mul_by_rns() here
+    Ciphertext(
+        cipher.params,
+        mult(cipher.ax, rpoly, np),
+        mult(cipher.bx, rpoly, np),
+        cipher.log_cap,
+        cipher.log_precision + p.log_precision,
+        cipher.slots)
+end
+
+
 function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     params = cipher.params
     plan = rns_plan(params)

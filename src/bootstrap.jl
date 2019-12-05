@@ -238,6 +238,7 @@ function div_by_po2(cipher::Ciphertext, bits::Int)
 end
 
 
+# TODO: `np` or `bnd` should be encapsulated in RNSPolynomial already
 function mul_by_rns(cipher::Ciphertext, p::RNSPolynomial, bnd::Int, log_precision::Int)
     np = cld(cipher.log_cap + bnd + cipher.params.log_polynomial_length + 2, 59)
     Ciphertext(

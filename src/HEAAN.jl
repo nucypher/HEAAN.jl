@@ -32,6 +32,7 @@ export add
 export mul
 export imul
 export mul_by_const
+export mul_by_const_vec
 
 export power_of_2
 export power

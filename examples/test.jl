@@ -137,6 +137,34 @@ function test_mul_const_complex()
 end
 
 
+function test_mul_const_vec()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+
+    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    cnst = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = mul_by_const_vec(cipher, cnst, log_precision)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mvec .* cnst, dvec)
+
+end
+
+
+
 function test_imul()
 
     n = 2^6
@@ -505,18 +533,19 @@ function test_bootstrap()
 end
 
 
-#test_encrypt()
-#test_add()
-#test_mul()
+test_encrypt()
+test_add()
+test_mul()
 test_mul_const_complex()
-#test_imul()
-#test_circshift()
-#test_conj()
-#test_power_of_2()
-#test_power()
-#test_inverse()
-#test_log()
-#test_exp()
-#test_sigmoid()
-#test_sigmoid_lazy()
-#test_bootstrap()
+test_mul_const_vec()
+test_imul()
+test_circshift()
+test_conj()
+test_power_of_2()
+test_power()
+test_inverse()
+test_log()
+test_exp()
+test_sigmoid()
+test_sigmoid_lazy()
+test_bootstrap()
