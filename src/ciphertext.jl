@@ -22,15 +22,16 @@ struct Ciphertext
             log_cap::Int, log_precision::Int, slots::Int) where {T, Q}
         @assert log_cap == Q
         @assert log_precision > 0
+        @assert log_precision <= Q
         new(params, ax, bx, log_cap, log_precision, slots)
     end
 end
 
 
-function compatible(c1::Ciphertext, c2::Ciphertext)
+function compatible(c1::Ciphertext, c2::Ciphertext; different_precision::Bool=false)
     (c1.params == c2.params &&
     c1.log_cap == c2.log_cap &&
-    c1.log_precision == c2.log_precision &&
+    (different_precision || c1.log_precision == c2.log_precision) &&
     c1.slots == c2.slots)
 end
 

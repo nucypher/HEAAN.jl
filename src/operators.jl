@@ -24,7 +24,7 @@ end
 
 function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     # TODO: technically, log_precision may differ?
-    @assert compatible(cipher1, cipher2)
+    @assert compatible(cipher1, cipher2, different_precision=true)
     # TODO: check compatibility with the public key as well
 
     params = cipher1.params
