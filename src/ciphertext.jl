@@ -21,6 +21,7 @@ struct Ciphertext
             bx::Polynomial{BinModuloInt{T, Q}},
             log_cap::Int, log_precision::Int, slots::Int) where {T, Q}
         @assert log_cap == Q
+        @assert log_precision > 0
         new(params, ax, bx, log_cap, log_precision, slots)
     end
 end
@@ -40,18 +41,17 @@ function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
 end
 
 
-function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision::Int, log_cap::Int)
-    log_full = params.log_lo_modulus + log_cap
+function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision::Int, log_modulus::Int)
     plen = 2^params.log_polynomial_length
     slots = length(vals)
     gap = plen ÷ 2 ÷ slots
     uvals = unembed(params, vals)
-    tp = BinModuloInt{BigInt, log_full}
+    tp = BinModuloInt{BigInt, log_modulus}
     mx = zeros(tp, gap, slots, 2)
-    mx[1,:,1] = float_to_integer.(tp, real.(uvals), log_precision + params.log_lo_modulus)
-    mx[1,:,2] = float_to_integer.(tp, imag.(uvals), log_precision + params.log_lo_modulus)
+    mx[1,:,1] = float_to_integer.(tp, real.(uvals), log_precision)
+    mx[1,:,2] = float_to_integer.(tp, imag.(uvals), log_precision)
     poly = Polynomial(mx[:], true)
-    Plaintext(params, poly, log_cap, log_precision, slots)
+    Plaintext(params, poly, log_modulus, log_precision, slots)
 end
 
 
@@ -88,7 +88,7 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     params = plain.params
     plen = 2^params.log_polynomial_length
 
-    log_modulus = plain.log_cap + params.log_lo_modulus
+    log_modulus = plain.log_cap
     modulus = one(BigInt) << log_modulus
 
     vx = sample_ZO(rng, 2^params.log_polynomial_length, log_modulus)
@@ -113,14 +113,19 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     ax = ax >> params.log_lo_modulus
     bx = bx >> params.log_lo_modulus
 
-    Ciphertext(params, ax, bx, plain.log_cap, plain.log_precision, plain.slots)
+    Ciphertext(params, ax, bx,
+        plain.log_cap - params.log_lo_modulus,
+        plain.log_precision - params.log_lo_modulus, plain.slots)
 end
 
 
 function encrypt(
         rng::AbstractRNG, key::EncryptionKey, vals::Array{Complex{Float64}, 1},
         log_precision::Int, log_cap::Int)
-    plain = encode(key.params, vals, log_precision, log_cap)
+    params = key.params
+    plain = encode(
+        params, vals,
+        log_precision + params.log_lo_modulus, log_cap + params.log_lo_modulus)
     encrypt(rng, key, plain)
 end
 
