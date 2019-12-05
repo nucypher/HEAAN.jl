@@ -139,7 +139,8 @@ end
 
 function Base.convert(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
     @assert Q1 >= Q2
-    BinModuloInt{T, Q1}(x.value)
+    neg = signbit(x)
+    BinModuloInt{T, Q1}(neg ? x.value - modulus(T, Q2) + modulus(T, Q1) : x.value)
 end
 
 
