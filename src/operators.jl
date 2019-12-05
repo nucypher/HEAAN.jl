@@ -167,17 +167,9 @@ function rescale_by(cipher::Ciphertext, dlog_cap::Int)
 end
 
 
-function add_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64}, log_precision::Int)
-
-    # TODO: seems to be just for joining two functions into one - taking precision from ciphertext,
-    # or overriding it. Can be replaced by just a default parameter.
+function add_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64})
     tp = BinModuloInt{BigInt, cipher.log_cap}
-    cnst_big = if log_precision < 0
-        float_to_integer(tp, cnst, cipher.log_precision)
-    else
-        float_to_integer(tp, cnst, log_precision)
-    end
-
+    cnst_big = float_to_integer(tp, cnst, cipher.log_precision)
     Ciphertext(
         cipher.params,
         cipher.ax,
@@ -185,6 +177,11 @@ function add_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64}, log_preci
         cipher.log_cap,
         cipher.log_precision,
         cipher.slots)
+end
+
+
+function add_const(cipher::Ciphertext, cnst::Complex{Float64})
+    negate(imul(add_const(imul(add_const(cipher, real(cnst))), -imag(cnst))))
 end
 
 

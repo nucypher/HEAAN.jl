@@ -29,6 +29,7 @@ export MultiplicationKey
 export LeftRotationKey
 export ConjugationKey
 export add
+export add_const
 export mul
 export imul
 export mul_by_const

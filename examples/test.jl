@@ -81,6 +81,36 @@ function test_add()
 end
 
 
+function test_add_const()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 100
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+
+    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mconst = randomComplex(rng) # randn(rng, n) + im * randn(rng, n)
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = add_const(cipher, mconst)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(
+        #im * (im * (mvec + real(mconst)) - imag(mconst)),
+        mvec .+ mconst,
+        dvec)
+
+end
+
+
 function test_mul()
 
     n = 2^6
@@ -535,6 +565,7 @@ end
 
 test_encrypt()
 test_add()
+test_add_const()
 test_mul()
 test_mul_const_complex()
 test_mul_const_vec()
