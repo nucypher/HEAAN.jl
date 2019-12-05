@@ -435,6 +435,34 @@ function test_exp()
 end
 
 
+function test_div_by_po2()
+
+    n = 2^6
+    log_precision = 30
+    log_cap = 300
+    bits = 20
+
+    rng = MyRNG(12345)
+    params = Params(log_polynomial_length=8, log_lo_modulus=300)
+
+    secret_key = SecretKey(rng, params)
+
+    enc_key = EncryptionKey(rng, secret_key)
+
+    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mdiv = mvec ./ 2^bits
+
+    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
+
+    cipher_res = HEAAN.div_by_po2(cipher, bits)
+
+    dvec = decrypt(secret_key, cipher_res)
+
+    print_statistics(mdiv, dvec)
+
+end
+
+
 function test_sigmoid()
 
     n = 2^6
