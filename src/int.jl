@@ -99,7 +99,12 @@ struct BinModuloInt{T, Q} <: Number
 end
 
 
-num_bits(x::BinModuloInt) = num_bits(x.value)
+function num_bits(x::BinModuloInt)
+    if signbit(x)
+        x = -x
+    end
+    num_bits(x.value)
+end
 
 
 all_bits_mask(::Type{BinModuloInt{T, Q}}) where {T, Q} = all_bits_mask(T, Q)
