@@ -37,8 +37,8 @@ end
 
 
 function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
-    coeffs = rand(rng, zero(BigInt):((one(BigInt) << log_modulus) - one(BigInt)), dims...)
-    Polynomial(BInModuloInt{BigInt, log_modulus}.(coeffs), true)
+    coeffs = rand(rng, zero(BigInt):high_bit_mask(BigInt, log_modulus), dims...)
+    Polynomial(BinModuloInt{BigInt, log_modulus}.(coeffs), true)
 end
 
 
@@ -60,29 +60,21 @@ function bit(x::BigInt, i::Int)
     x & (one(BigInt) << i) != 0
 end
 
-function sample_ZO(rng, len::Int, log_modulus::Int)
-    res = Array{BigInt}(undef, len)
-    tmp = myRandomBits_ZZ(rng, len*2)
-    for i in 0:len-1
-        res[i+1] = (!bit(tmp, 2 * i)) ? zero(BigInt) : (!bit(tmp, 2 * i + 1)) ? one(BigInt) : -one(BigInt)
-    end
-    Polynomial(BinModuloInt{BigInt, log_modulus}.(normalize.(res, log_modulus)), true)
-end
 
-#=
 function sample_ZO(rng::AbstractRNG, len::Int, log_modulus::Int)
-    modulus = one(BigInt) << log_modulus
-    minus_one = modulus - one(BigInt)
+    zero_val = zero(BinModuloInt{BigInt, log_modulus})
+    one_val = one(BinModuloInt{BigInt, log_modulus})
+    minus_one = -one_val
 
     bits1 = rand(rng, Bool, len)
     bits2 = rand(rng, Bool, len)
     res = [
-        b1 ? zero(BigInt) : (b2 ? one(BigInt) : minus_one)
+        b1 ? zero_val : (b2 ? one_val : minus_one)
         for (b1, b2) in zip(bits1, bits2)]
 
-    CappedPolynomial(Polynomial(res, true), log_modulus)
+    Polynomial(res, true)
 end
-=#
+
 
 function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
 
@@ -98,14 +90,12 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     np = cld(1 + params.log_lo_modulus + params.log_hi_modulus + params.log_polynomial_length + 2, 59)
 
     # TODO: move round(...) * ... into a function of Params object
-    # gg = randn(rng, plen) * params.gaussian_noise_stddev
-    gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
+    gg = randn(rng, plen) * params.gaussian_noise_stddev
     ax = (
         round.(Int, gg) +
         mult(vx, key.key.rax, np))
 
-    # gg = randn(rng, plen) * params.gaussian_noise_stddev
-    gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
+    gg = randn(rng, plen) * params.gaussian_noise_stddev
     bx = (
         round.(Int, gg) +
         plain.polynomial +

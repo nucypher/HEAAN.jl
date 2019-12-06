@@ -9,11 +9,7 @@ struct EmbeddingPlan
 
         # The last element being the same as the first one is intentional -
         # it simplifies addressing slightly.
-        m_pi = Float64(pi)
-        angles = [2.0 * m_pi * j / (max_len * 4) for j in 0:max_len*4]
-        root_powers = mycos.(angles) + im * mysin.(angles)
-
-        #root_powers = exp.(2pi * im .* (0:max_len*4) / (max_len * 4))
+        root_powers = exp.(2pi * im .* (0:max_len*4) / (max_len * 4))
 
         new(max_len, rotation_group, root_powers)
     end

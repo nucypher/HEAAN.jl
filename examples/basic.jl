@@ -1,3 +1,4 @@
+using Random
 using HEAAN
 
 
@@ -48,7 +49,7 @@ function test()
     # Polynomial length and full modulus determine the security of the scheme
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
-    rng = HEAAN.MyRNG(12345)
+    rng = MersenneTwister(123)
 
     secret_key = SecretKey(rng, params)
 
@@ -59,8 +60,8 @@ function test()
     # Rotation keys must be created for each required shift value
     lr_key = LeftRotationKey(rng, secret_key, 16)
 
-    v1 = HEAAN.randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    v2 = HEAAN.randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    v1 = rand(rng, n) + im * rand(rng, n)
+    v2 = rand(rng, n) + im * rand(rng, n)
 
     # Reference calculation
     sigmoid_ref(v) = exp(v) / (1 + exp(v))

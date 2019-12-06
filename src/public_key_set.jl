@@ -14,12 +14,9 @@ struct EncryptionKey
         log_plen = params.log_polynomial_length
         plen = 2^log_plen
 
-        #ax = rand_big_int(rng, log_modulus, plen)
-        ax_c = sampleUniform2(rng, log_modulus, plen)
-        ax = Polynomial(BinModuloInt{BigInt, log_modulus}.(ax_c), true)
+        ax = rand_big_int(rng, log_modulus, plen)
 
-        #gg = randn(rng, plen) * params.gaussian_noise_stddev
-        gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
+        gg = randn(rng, plen) * params.gaussian_noise_stddev
         bx = round.(Int, gg) - secret_key * ax
 
         plan = rns_plan(params)
@@ -42,12 +39,9 @@ struct MultiplicationKey
         log_plen = params.log_polynomial_length
         plen = 2^log_plen
 
-        #ax = rand_big_int(rng, log_modulus, plen)
-        ax_c = sampleUniform2(rng, log_modulus, plen)
-        ax = Polynomial(BinModuloInt{BigInt, log_modulus}.(ax_c), true)
+        ax = rand_big_int(rng, log_modulus, plen)
 
-        #gg = randn(rng, plen) * params.gaussian_noise_stddev
-        gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
+        gg = randn(rng, plen) * params.gaussian_noise_stddev
         sxsx = square(secret_key, params.log_lo_modulus) << params.log_hi_modulus
         bx = round.(Int, gg) - secret_key * ax + sxsx
 
@@ -72,12 +66,10 @@ struct LeftRotationKey
         plen = 2^log_plen
 
         np = cld(1 + log_modulus + log_plen + 2, 59)
-        #ax = rand_big_int(rng, log_modulus, plen)
-        ax_c = sampleUniform2(rng, log_modulus, plen)
-        ax = Polynomial(BinModuloInt{BigInt, log_modulus}.(ax_c), true)
 
-        #gg = randn(rng, plen) * params.gaussian_noise_stddev
-        gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
+        ax = rand_big_int(rng, log_modulus, plen)
+
+        gg = randn(rng, plen) * params.gaussian_noise_stddev
         bx = round.(Int, gg) - secret_key * ax
 
         spow = left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift) << params.log_hi_modulus
@@ -103,12 +95,10 @@ struct ConjugationKey
         plen = 2^log_plen
 
         np = cld(1 + log_modulus + log_plen + 2, 59)
-        #ax = rand_big_int(rng, log_modulus, plen)
-        ax_c = sampleUniform2(rng, log_modulus, plen)
-        ax = Polynomial(BinModuloInt{BigInt, log_modulus}.(ax_c), true)
 
-        #gg = randn(rng, plen) * params.gaussian_noise_stddev
-        gg = rand_gauss(rng, plen, params.gaussian_noise_stddev)
+        ax = rand_big_int(rng, log_modulus, plen)
+
+        gg = randn(rng, plen) * params.gaussian_noise_stddev
         bx = round.(Int, gg) - secret_key * ax
 
         sxconj = conjugate(as_polynomial(secret_key, params.log_lo_modulus)) << params.log_hi_modulus

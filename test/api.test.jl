@@ -1,5 +1,5 @@
+using Random
 using HEAAN
-using HEAAN: MyRNG, randomComplexArray, randomCircle, randomComplex, randomReal
 
 
 function coinciding_bits(x::Float64, y::Float64)
@@ -32,6 +32,12 @@ function test_approx(x::Array{Complex{Float64}}, y::Array{Complex{Float64}}, exp
 end
 
 
+rand_unit(rng, dims...) = rand(rng, dims...) .* 2 .- 1
+
+
+rand_circle(rng, anglebound, dims...) = exp.(2pi .* im .* anglebound .* rand(rng, dims...))
+
+
 @testgroup "Public API" begin
 
 
@@ -40,14 +46,13 @@ end
     log_precision = 30
     log_cap = 100
 
-    #rng = MersenneTwister(12345)
-    rng = MyRNG(12345)
+    rng = MersenneTwister(12345)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
     dvec = decrypt(secret_key, cipher)
 
@@ -60,15 +65,15 @@ end
     log_precision = 30
     log_cap = 100
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
 
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec1 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    mvec2 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec1 = rand_unit(rng, n) + im * rand_unit(rng, n)
+    mvec2 = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher1 = encrypt(rng, enc_key, mvec1, log_precision, log_cap)
     cipher2 = encrypt(rng, enc_key, mvec2, log_precision, log_cap)
@@ -86,15 +91,15 @@ end
     log_precision = 30
     log_cap = 100
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
 
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    mconst = tp == "complex" ? randomComplex(rng) : randomReal(rng) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
+    mconst = tp == "complex" ? rand_unit(rng) + im * rand_unit(rng) : rand_unit(rng)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -111,7 +116,7 @@ end
     log_precision = 30
     log_cap = 100
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -119,8 +124,8 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    mvec1 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    mvec2 = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec1 = rand_unit(rng, n) + im * rand_unit(rng, n)
+    mvec2 = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher1 = encrypt(rng, enc_key, mvec1, log_precision, log_cap)
     cipher2 = encrypt(rng, enc_key, mvec2, log_precision, log_cap)
@@ -138,15 +143,15 @@ end
     log_precision = 30
     log_cap = 100
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
 
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    mconst = tp == "complex" ? randomComplex(rng) : randomReal(rng) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
+    mconst = tp == "complex" ? rand_unit(rng) + im * rand_unit(rng) : rand_unit(rng)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -163,15 +168,15 @@ end
     log_precision = 30
     log_cap = 300
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
 
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    cnst = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
+    cnst = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -188,14 +193,14 @@ end
     log_precision = 30
     log_cap = 100
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
 
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -213,7 +218,7 @@ end
     log_precision = 30
     log_cap = 100
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -221,7 +226,7 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     rot_key = LeftRotationKey(rng, secret_key, r)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -238,7 +243,7 @@ end
     log_precision = 30
     log_cap = 300
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -246,7 +251,7 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     conj_key = ConjugationKey(rng, secret_key)
 
-    mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -265,7 +270,7 @@ end
     log_precision = 30
     log_cap = 300
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -273,14 +278,8 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    mvec = [randomCircle(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
-
-    # TODO: Temporary replacement for bit-to-bit compatibility with the reference implementation.
-    #mpow = mvec .^ degree
-    mpow = copy(mvec)
-    for i in 1:degree-1
-        mpow .*= mvec
-    end
+    mvec = rand_circle(rng, 1.0, n)
+    mpow = mvec .^ degree
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -288,7 +287,7 @@ end
 
     dvec = decrypt(secret_key, cipher_res)
 
-    test_approx(mpow, dvec, 20)
+    test_approx(mpow, dvec, 19)
 end
 
 
@@ -298,7 +297,7 @@ end
     log_precision = 30
     log_cap = 300
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -306,14 +305,8 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    mvec = [randomCircle(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
-
-    # Temporary replacement for bit-to-bit compatibility with the reference implementation.
-    #mpow = mvec .^ degree
-    mpow = copy(mvec)
-    for i in 1:degree-1
-        mpow .*= mvec
-    end
+    mvec = rand_circle(rng, 1.0, n)
+    mpow = mvec .^ degree
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -321,7 +314,7 @@ end
 
     dvec = decrypt(secret_key, cipher_res)
 
-    test_approx(mpow, dvec, 20)
+    test_approx(mpow, dvec, 19)
 end
 
 
@@ -331,7 +324,7 @@ end
     log_cap = 300
     steps = 6
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -340,7 +333,7 @@ end
     mul_key = MultiplicationKey(rng, secret_key)
 
     # TODO: if one uses 1.0 instead of 0.1, the error becomes huge. Why?
-    mvec = [randomCircle(rng, 0.1) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_circle(rng, 0.1, n)
     minv = 1 ./ mvec
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
@@ -359,7 +352,7 @@ end
     log_cap = 300
     degree = 7
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -367,7 +360,7 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    mvec = [randomComplex(rng, 0.1) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mvec = (rand_unit(rng, n) + im * rand_unit(rng, n)) * 0.1
     mlog = log.(mvec .+ 1)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
@@ -386,7 +379,7 @@ end
     log_cap = 300
     degree = 7
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -394,7 +387,7 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
     mexp = exp.(mvec)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
@@ -413,14 +406,14 @@ end
     log_cap = 300
     bits = 20
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
 
     enc_key = EncryptionKey(rng, secret_key)
 
-    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
     mdiv = mvec ./ 2^bits
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
@@ -439,7 +432,7 @@ end
     log_cap = 300
     degree = 7
 
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
@@ -447,7 +440,7 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
     msig = exp.(mvec) ./ (1 .+ exp.(mvec))
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
@@ -461,7 +454,7 @@ end
 
 
 @testcase "bootstrap" begin
-    rng = MyRNG(12345)
+    rng = MersenneTwister(123)
 
     log_t = 4 # means that we use Taylor approximation in [-1/t,1/t] with double angle fomula
     log_n = 3
@@ -481,7 +474,7 @@ end
 
     bk = BootstrapKey(rng, secret_key, enc_key, mul_key, conj_key, log_n, bc_precision)
 
-    mvec = randomComplexArray(rng, n)
+    mvec = rand_unit(rng, n) + im * rand_unit(rng, n)
 
     cipher = encrypt(rng, bk.enc_key, mvec, log_precision, log_cap)
 

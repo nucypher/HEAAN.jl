@@ -6,7 +6,6 @@ using Random
 
 include("int.jl")
 include("float.jl")
-include("compat.jl")
 include("rns.jl")
 include("embedding.jl")
 

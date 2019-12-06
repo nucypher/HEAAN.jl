@@ -6,25 +6,11 @@ struct SecretKey
     function SecretKey(rng::AbstractRNG, params::Params)
         # Sample from HWT distribution in the paper:
         # {1, -1} at `secret_key_length` positions, the rest are zeros.
-
-        #positions = sample_unique(rng, 1, 2^params.log_polynomial_length, params.secret_key_length)
-        #bits = rand(rng, Bool, params.secret_key_length)
+        positions = sample_unique(rng, 1, 2^params.log_polynomial_length, params.secret_key_length)
+        bits = rand(rng, Bool, params.secret_key_length)
 
         # We are recording the key in sparse form
-        #new(params, collect(zip(positions, bits)))
-
-        res = Dict{Int, Bool}()
-        idx = 0
-        tmp = myRandomBits_ZZ(rng, params.secret_key_length)
-        while idx < params.secret_key_length
-            i = myRandomBits_long(rng, params.log_polynomial_length)
-            if !haskey(res, i+1)
-                res[i+1] = !(tmp & (one(BigInt) << idx) == 0)
-                idx += 1
-            end
-        end
-
-        new(params, collect(res))
+        new(params, [pos => bit for (pos, bit) in zip(positions, bits)])
     end
 end
 
