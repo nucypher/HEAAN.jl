@@ -234,18 +234,6 @@ struct BootstrapKey
 end
 
 
-# TODO: I think the same operation is used somewhere else in the code, need to find it
-function div_by_po2(cipher::Ciphertext, bits::Int)
-    Ciphertext(
-        cipher.params,
-        cipher.ax >> bits,
-        cipher.bx >> bits,
-        cipher.log_cap - bits,
-        cipher.log_precision,
-        cipher.slots)
-end
-
-
 # TODO: `np` or `bnd` should be encapsulated in RNSPolynomial already
 function mul_by_rns(cipher::Ciphertext, p::RNSPolynomial, bnd::Int, log_precision::Int)
     np = cld(cipher.log_cap + bnd + cipher.params.log_polynomial_length + 2, 59)

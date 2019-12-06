@@ -298,3 +298,15 @@ function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
         cipher.log_precision,
         cipher.slots)
 end
+
+
+# TODO: I think the same operation is used somewhere else in the code, need to find it
+function div_by_po2(cipher::Ciphertext, bits::Int)
+    Ciphertext(
+        cipher.params,
+        cipher.ax >> bits,
+        cipher.bx >> bits,
+        cipher.log_cap - bits,
+        cipher.log_precision,
+        cipher.slots)
+end

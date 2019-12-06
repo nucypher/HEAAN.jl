@@ -8,25 +8,26 @@ include("int.jl")
 include("float.jl")
 include("rns.jl")
 include("embedding.jl")
-include("random.jl")
-include("params.jl")
 include("polynomial.jl")
-include("secret_key.jl")
-include("public_keys.jl")
-include("ciphertext.jl")
-include("operators.jl")
-include("algo.jl")
-include("bootstrap.jl")
+include("random.jl")
 
+include("params.jl")
 export Params
-export Context
+
+include("secret_key.jl")
 export SecretKey
-export encrypt
-export decrypt
+
+include("public_keys.jl")
 export EncryptionKey
 export MultiplicationKey
 export LeftRotationKey
 export ConjugationKey
+
+include("ciphertext.jl")
+export encrypt
+export decrypt
+
+include("operators.jl")
 export add
 export add_const
 export mul
@@ -34,12 +35,16 @@ export imul
 export mul_by_const
 export mul_by_const_vec
 export div_by_po2
-export power
-export log_plus_one
-export sigmoid
-export BootstrapKey
-export bootstrap
 export mod_down_by
 export rescale_by
+
+include("algo.jl")
+export power
+export sigmoid
+export log_plus_one
+
+include("bootstrap.jl")
+export BootstrapKey
+export bootstrap
 
 end
