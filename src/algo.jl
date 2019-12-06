@@ -86,16 +86,17 @@ end
 
 function power_series_eager(
         mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
-        coeffs::Array{Float64, 1}, max_pwr::Int)
+        coeffs::Array{Float64, 1})
 
+    max_pwr = length(coeffs) - 1
     cpows = power_extended(mk, cipher, log_precision, max_pwr)
 
     res = mul_by_const(cpows[1], coeffs[2], log_precision)
     res = add_const(res, coeffs[1])
 
-    for i in 1:max_pwr-1
-        if abs(coeffs[i + 2]) > 1e-27 # TODO: why this limit?
-            aixi = mul_by_const(cpows[i+1], coeffs[i + 2], log_precision)
+    for i in 3:length(coeffs)
+        if !iszero(coeffs[i])
+            aixi = mul_by_const(cpows[i - 1], coeffs[i], log_precision)
             res = mod_down_to(res, aixi.log_cap)
             res = add(res, aixi)
         end
@@ -106,16 +107,17 @@ end
 
 function power_series_lazy(
         mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
-        coeffs::Array{Float64, 1}, max_pwr::Int)
+        coeffs::Array{Float64, 1})
 
+    max_pwr = length(coeffs) - 1
     cpows = power_extended(mk, cipher, log_precision, max_pwr)
 
     res = mul_by_const(cpows[1], coeffs[2], log_precision)
     res = add_const(res, coeffs[1])
 
-    for i in 1:max_pwr-1
-        if abs(coeffs[i + 2]) > 1e-27 # TODO: why this limit?
-            aixi = mul_by_const(cpows[i+1], coeffs[i + 2], log_precision)
+    for i in 3:length(coeffs)
+        if !iszero(coeffs[i])
+            aixi = mul_by_const(cpows[i - 1], coeffs[i], log_precision)
             res = mod_down_by(res, res.log_cap - aixi.log_cap)
             res = add(res, aixi)
         end
@@ -125,27 +127,31 @@ function power_series_lazy(
 end
 
 
-power_series(mk, cipher, log_precision, coeffs, max_pwr; lazy::Bool=false) =
+power_series(mk, cipher, log_precision, coeffs; lazy::Bool=false) =
     lazy ?
-        power_series_lazy(mk, cipher, log_precision, coeffs, max_pwr) :
-        power_series_eager(mk, cipher, log_precision, coeffs, max_pwr)
+        power_series_lazy(mk, cipher, log_precision, coeffs) :
+        power_series_eager(mk, cipher, log_precision, coeffs)
+
+
+log_plus_one_series(max_pwr) = vcat([0], [(-1)^(k-1) / k for k in 1:max_pwr])
 
 
 log_plus_one(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
-    power_series(
-        mk, cipher, log_precision, [0, 1, -0.5, 1/3, -1/4, 1/5, -1/6, 1/7, -1/8, 1/9, -1/10],
-        max_pwr, lazy=lazy)
+    power_series(mk, cipher, log_precision, log_plus_one_series(max_pwr), lazy=lazy)
+
+
+exp_series(max_pwr) = [1 / factorial(k) for k in 0:max_pwr]
 
 
 Base.exp(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
-    power_series(
-        mk, cipher, log_precision,
-        [1, 1, 0.5, 1/6, 1/24, 1/120, 1/720, 1/5040, 1/40320, 1/362880, 1/3628800],
-        max_pwr, lazy=lazy)
+    power_series(mk, cipher, log_precision, exp_series(max_pwr), lazy=lazy)
+
+
+# There are no built-in functions in Julia to calculate this easily,
+# so for simplicity just hardcoding the first few coefficients.
+sigmoid_series(max_pwr) =
+    [1/2, 1/4, 0, -1/48, 0, 1/480, 0, -17/80640, 0, 31/1451520, 0][1:max_pwr+1]
 
 
 sigmoid(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
-    power_series(
-        mk, cipher, log_precision,
-        [1/2, 1/4, 0, -1/48, 0, 1/480, 0, -17/80640, 0, 31/1451520, 0],
-        max_pwr, lazy=lazy)
+    power_series(mk, cipher, log_precision, sigmoid_series(max_pwr), lazy=lazy)
