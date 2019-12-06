@@ -1,6 +1,5 @@
-using Random
 using HEAAN
-using HEAAN: hexfloat, MyRNG, randomComplexArray, randomCircle, randomComplex
+using HEAAN: MyRNG, randomComplexArray, randomCircle, randomComplex, randomReal
 
 
 function coinciding_bits(x::Float64, y::Float64)
@@ -19,18 +18,24 @@ mean(x) = sum(x) / length(x)
 std(x) = sqrt(sum((x .- mean(x)).^2) / (length(x) - 1))
 
 
-function print_statistics(x::Array{Complex{Float64}}, y::Array{Complex{Float64}})
-    for i in 1:length(x)
-        println(real(x[i]), " ", real(y[i]))
-        println(imag(x[i]), " ", imag(y[i]))
-    end
+function test_approx(x::Array{Complex{Float64}}, y::Array{Complex{Float64}}, expected_min_bits)
     bits = coinciding_bits(x, y)
-    println("Coinciding bits: min=$(minimum(bits)) max=$(maximum(bits)) mean=$(mean(bits)) std=$(std(bits))")
+    min_bits = minimum(bits)
+    max_bits = maximum(bits)
+    mean_bits = round(mean(bits), digits=2)
+    std_bits = round(std(bits), digits=2)
+    if min_bits >= expected_min_bits
+        @test_result "$min_bits to $max_bits bits ($mean_bits±$std_bits)"
+    else
+        @test_fail "Minimum coinciding bits: $min_bits, expected $expected_min_bits"
+    end
 end
 
 
-function test_encrypt()
+@testgroup "Public API" begin
 
+
+@testcase "encrypt()/decrypt()" begin
     n = 2^6
     log_precision = 30
     log_cap = 100
@@ -40,21 +45,17 @@ function test_encrypt()
     params = Params(log_polynomial_length=8, log_lo_modulus=300)
 
     secret_key = SecretKey(rng, params)
-
     enc_key = EncryptionKey(rng, secret_key)
 
     mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
-
     dvec = decrypt(secret_key, cipher)
 
-    print_statistics(mvec, dvec)
+    test_approx(mvec, dvec, 23)
 end
 
 
-function test_add()
-
+@testcase "add()" begin
     n = 2^6
     log_precision = 30
     log_cap = 100
@@ -76,13 +77,11 @@ function test_add()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mvec1 .+ mvec2, dvec)
-
+    test_approx(mvec1 .+ mvec2, dvec, 23)
 end
 
 
-function test_add_const()
-
+@testcase "add_const()" for tp in ["real", "complex"]
     n = 2^6
     log_precision = 30
     log_cap = 100
@@ -95,7 +94,7 @@ function test_add_const()
     enc_key = EncryptionKey(rng, secret_key)
 
     mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    mconst = randomComplex(rng) # randn(rng, n) + im * randn(rng, n)
+    mconst = tp == "complex" ? randomComplex(rng) : randomReal(rng) # randn(rng, n) + im * randn(rng, n)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -103,12 +102,11 @@ function test_add_const()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mvec .+ mconst, dvec)
+    test_approx(mvec .+ mconst, dvec, 23)
 end
 
 
-function test_mul()
-
+@testcase "mul()" begin
     n = 2^6
     log_precision = 30
     log_cap = 100
@@ -131,13 +129,11 @@ function test_mul()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mvec1 .* mvec2, dvec)
-
+    test_approx(mvec1 .* mvec2, dvec, 23)
 end
 
 
-function test_mul_const_complex()
-
+@testcase "mul_by_const()" for tp in ["real", "complex"]
     n = 2^6
     log_precision = 30
     log_cap = 100
@@ -150,7 +146,7 @@ function test_mul_const_complex()
     enc_key = EncryptionKey(rng, secret_key)
 
     mvec = randomComplexArray(rng, n) # randn(rng, n) + im * randn(rng, n)
-    mconst = randomComplex(rng) # randn(rng, n) + im * randn(rng, n)
+    mconst = tp == "complex" ? randomComplex(rng) : randomReal(rng) # randn(rng, n) + im * randn(rng, n)
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
@@ -158,13 +154,11 @@ function test_mul_const_complex()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mvec .* mconst, dvec)
-
+    test_approx(mvec .* mconst, dvec, 23)
 end
 
 
-function test_mul_const_vec()
-
+@testcase "mul_by_const_vec()" begin
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -185,14 +179,11 @@ function test_mul_const_vec()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mvec .* cnst, dvec)
-
+    test_approx(mvec .* cnst, dvec, 23)
 end
 
 
-
-function test_imul()
-
+@testcase "imul()" begin
     n = 2^6
     log_precision = 30
     log_cap = 100
@@ -212,13 +203,11 @@ function test_imul()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mvec .* im, dvec)
-
+    test_approx(mvec .* im, dvec, 23)
 end
 
 
-function test_circshift()
-
+@testcase "circshift()" begin
     n = 2^6
     r = 2^4
     log_precision = 30
@@ -240,13 +229,11 @@ function test_circshift()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(circshift(mvec, -r), dvec)
-
+    test_approx(circshift(mvec, -r), dvec, 23)
 end
 
 
-function test_conj()
-
+@testcase "conj()" begin
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -267,13 +254,11 @@ function test_conj()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(conj.(mvec), dvec)
-
+    test_approx(conj.(mvec), dvec, 21)
 end
 
 
-function test_power_of_2()
-
+@testcase "power_of_2()" begin
     n = 2^6
     log_degree = 4
     degree = 2^log_degree
@@ -290,7 +275,7 @@ function test_power_of_2()
 
     mvec = [randomCircle(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
 
-    # Temporary replacement for bit-to-bit compatibility with the reference implementation.
+    # TODO: Temporary replacement for bit-to-bit compatibility with the reference implementation.
     #mpow = mvec .^ degree
     mpow = copy(mvec)
     for i in 1:degree-1
@@ -303,13 +288,11 @@ function test_power_of_2()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mpow, dvec)
-
+    test_approx(mpow, dvec, 20)
 end
 
 
-function test_power()
-
+@testcase "power()" begin
     n = 2^6
     degree = 13
     log_precision = 30
@@ -338,13 +321,11 @@ function test_power()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mpow, dvec)
-
+    test_approx(mpow, dvec, 20)
 end
 
 
-function test_inverse()
-
+@testcase "inv()" begin
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -368,13 +349,11 @@ function test_inverse()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(minv, dvec)
-
+    test_approx(minv, dvec, 22)
 end
 
 
-function test_log()
-
+@testcase "log_plus_one()" begin
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -397,13 +376,11 @@ function test_log()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mlog, dvec)
-
+    test_approx(mlog, dvec, 23)
 end
 
 
-function test_exp()
-
+@testcase "exp()" begin
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -426,13 +403,11 @@ function test_exp()
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mexp, dvec)
-
+    test_approx(mexp, dvec, 12)
 end
 
 
-function test_div_by_po2()
-
+@testcase "div_by_po2()" begin
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -450,17 +425,15 @@ function test_div_by_po2()
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
-    cipher_res = HEAAN.div_by_po2(cipher, bits)
+    cipher_res = div_by_po2(cipher, bits)
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(mdiv, dvec)
-
+    test_approx(mdiv, dvec, 23)
 end
 
 
-function test_sigmoid()
-
+@testcase "sigmoid()" for lazy in ["lazy", "eager"]
     n = 2^6
     log_precision = 30
     log_cap = 300
@@ -479,44 +452,15 @@ function test_sigmoid()
 
     cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
 
-    cipher_res = sigmoid(mul_key, cipher, log_precision, degree)
+    cipher_res = sigmoid(mul_key, cipher, log_precision, degree, lazy=(lazy == "lazy"))
 
     dvec = decrypt(secret_key, cipher_res)
 
-    print_statistics(msig, dvec)
+    test_approx(msig, dvec, 12)
 end
 
 
-function test_sigmoid_lazy()
-
-    n = 2^6
-    log_precision = 30
-    log_cap = 300
-    degree = 7
-
-    rng = MyRNG(12345)
-    params = Params(log_polynomial_length=8, log_lo_modulus=300)
-
-    secret_key = SecretKey(rng, params)
-
-    enc_key = EncryptionKey(rng, secret_key)
-    mul_key = MultiplicationKey(rng, secret_key)
-
-    mvec = [randomComplex(rng) for i in 1:n] # randn(rng, n) + im * randn(rng, n)
-    msig = exp.(mvec) ./ (1 .+ exp.(mvec))
-
-    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
-
-    cipher_res = sigmoid(mul_key, cipher, log_precision, degree, lazy=true)
-
-    dvec = decrypt(secret_key, cipher_res)
-
-    print_statistics(msig, dvec)
-end
-
-
-function test_bootstrap()
-
+@testcase "bootstrap" begin
     rng = MyRNG(12345)
 
     log_t = 4 # means that we use Taylor approximation in [-1/t,1/t] with double angle fomula
@@ -541,32 +485,15 @@ function test_bootstrap()
 
     cipher = encrypt(rng, bk.enc_key, mvec, log_precision, log_cap)
 
-    println("Before: log_cap=$(cipher.log_cap) log_precision=$(cipher.log_precision)")
+    cipher_res = bootstrap(bk, cipher, log_t)
 
-    cipher = bootstrap(bk, cipher, log_t)
+    dvec = decrypt(secret_key, cipher_res)
 
-    println("After: log_cap=$(cipher.log_cap) log_precision=$(cipher.log_precision)")
+    # The main purpose of bootstrapping
+    @test cipher_res.log_cap - cipher_res.log_precision > cipher.log_cap - cipher.log_precision
 
-    dvec = decrypt(secret_key, cipher)
-
-    print_statistics(mvec, dvec)
+    test_approx(mvec, dvec, 6)
 end
 
-#=
-test_encrypt()
-test_add()
-test_add_const()
-test_mul()
-test_mul_const_complex()
-test_mul_const_vec()
-test_imul()
-test_circshift()
-test_conj()
-test_power_of_2()
-test_power()
-test_inverse()
-test_log()
-test_exp()
-test_sigmoid()
-test_sigmoid_lazy()
-test_bootstrap()
+
+end

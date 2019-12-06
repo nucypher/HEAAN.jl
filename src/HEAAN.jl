@@ -34,13 +34,14 @@ export mul
 export imul
 export mul_by_const
 export mul_by_const_vec
-
+export div_by_po2
 export power_of_2
 export power
 export log_plus_one
 export sigmoid
-
 export BootstrapKey
 export bootstrap
+export mod_down_by
+export rescale_by
 
 end
