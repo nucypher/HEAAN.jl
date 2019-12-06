@@ -36,12 +36,6 @@ function compatible(c1::Ciphertext, c2::Ciphertext; different_precision::Bool=fa
 end
 
 
-function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
-    coeffs = rand(rng, zero(BigInt):high_bit_mask(BigInt, log_modulus), dims...)
-    Polynomial(BinModuloInt{BigInt, log_modulus}.(coeffs), true)
-end
-
-
 function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision::Int, log_modulus::Int)
     plen = 2^params.log_polynomial_length
     slots = length(vals)
@@ -61,21 +55,6 @@ function bit(x::BigInt, i::Int)
 end
 
 
-function sample_ZO(rng::AbstractRNG, len::Int, log_modulus::Int)
-    zero_val = zero(BinModuloInt{BigInt, log_modulus})
-    one_val = one(BinModuloInt{BigInt, log_modulus})
-    minus_one = -one_val
-
-    bits1 = rand(rng, Bool, len)
-    bits2 = rand(rng, Bool, len)
-    res = [
-        b1 ? zero_val : (b2 ? one_val : minus_one)
-        for (b1, b2) in zip(bits1, bits2)]
-
-    Polynomial(res, true)
-end
-
-
 function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
 
     params = plain.params
@@ -89,15 +68,12 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     # TODO: `log_modulus` should be enough here?
     np = cld(1 + params.log_lo_modulus + params.log_hi_modulus + params.log_polynomial_length + 2, 59)
 
-    # TODO: move round(...) * ... into a function of Params object
-    gg = randn(rng, plen) * params.gaussian_noise_stddev
     ax = (
-        round.(Int, gg) +
+        discrete_gaussian(rng, params.gaussian_noise_stddev, plen) +
         mult(vx, key.key.rax, np))
 
-    gg = randn(rng, plen) * params.gaussian_noise_stddev
     bx = (
-        round.(Int, gg) +
+        discrete_gaussian(rng, params.gaussian_noise_stddev, plen) +
         plain.polynomial +
         mult(vx, key.key.rbx, np))
 

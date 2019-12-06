@@ -8,7 +8,7 @@ include("int.jl")
 include("float.jl")
 include("rns.jl")
 include("embedding.jl")
-
+include("random.jl")
 include("params.jl")
 include("polynomial.jl")
 include("secret_key.jl")

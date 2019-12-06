@@ -15,9 +15,7 @@ struct EncryptionKey
         plen = 2^log_plen
 
         ax = rand_big_int(rng, log_modulus, plen)
-
-        gg = randn(rng, plen) * params.gaussian_noise_stddev
-        bx = round.(Int, gg) - secret_key * ax
+        bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
         plan = rns_plan(params)
         rax = ntt_rns(to_rns(plan, ax))
@@ -41,9 +39,8 @@ struct MultiplicationKey
 
         ax = rand_big_int(rng, log_modulus, plen)
 
-        gg = randn(rng, plen) * params.gaussian_noise_stddev
         sxsx = square(secret_key, params.log_lo_modulus) << params.log_hi_modulus
-        bx = round.(Int, gg) - secret_key * ax + sxsx
+        bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax + sxsx
 
         plan = rns_plan(params)
         rax = ntt_rns(to_rns(plan, ax))
@@ -68,9 +65,7 @@ struct LeftRotationKey
         np = cld(1 + log_modulus + log_plen + 2, 59)
 
         ax = rand_big_int(rng, log_modulus, plen)
-
-        gg = randn(rng, plen) * params.gaussian_noise_stddev
-        bx = round.(Int, gg) - secret_key * ax
+        bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
         spow = left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift) << params.log_hi_modulus
         bx = bx + spow
@@ -97,9 +92,7 @@ struct ConjugationKey
         np = cld(1 + log_modulus + log_plen + 2, 59)
 
         ax = rand_big_int(rng, log_modulus, plen)
-
-        gg = randn(rng, plen) * params.gaussian_noise_stddev
-        bx = round.(Int, gg) - secret_key * ax
+        bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
         sxconj = conjugate(as_polynomial(secret_key, params.log_lo_modulus)) << params.log_hi_modulus
 
