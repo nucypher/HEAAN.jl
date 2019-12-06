@@ -1,12 +1,13 @@
 struct SecretKey
 
     params :: Params
-    nonzero_entries :: Array{Pair{Int, Bool}, 1} # a list of (position, is_minus_one)
+    nonzero_entries :: Array{Pair{Int, Bool}, 1} # a list of (power, is_minus_one)
 
     function SecretKey(rng::AbstractRNG, params::Params)
         # Sample from HWT distribution in the paper:
         # {1, -1} at `secret_key_length` positions, the rest are zeros.
-        positions = sample_unique(rng, 1, 2^params.log_polynomial_length, params.secret_key_length)
+        positions = sample_unique(
+            rng, 0, 2^params.log_polynomial_length-1, params.secret_key_length)
         bits = rand(rng, Bool, params.secret_key_length)
 
         # We are recording the key in sparse form
@@ -29,16 +30,16 @@ function Base.:*(secret_key::SecretKey, pa::Polynomial{BinModuloInt{T, Q}}) wher
     sk_list = secret_key.nonzero_entries
 
     power, minus_one = sk_list[1]
-    res = shift_polynomial(pa, power - 1)
+    res = shift_polynomial(pa, power)
     if minus_one
         res = -res
     end
 
     for (power, minus_one) in sk_list[2:end]
         if minus_one
-            res -= shift_polynomial(pa, power - 1)
+            res -= shift_polynomial(pa, power)
         else
-            res += shift_polynomial(pa, power - 1)
+            res += shift_polynomial(pa, power)
         end
     end
 
@@ -51,7 +52,7 @@ function as_polynomial(secret_key::SecretKey, log_modulus::Int)
     tp = BinModuloInt{BigInt, log_modulus}
     sk_poly = Polynomial(zeros(tp, 2^params.log_polynomial_length), true)
     for (power, minus_one) in secret_key.nonzero_entries
-        sk_poly.coeffs[power] = minus_one ? -one(tp) : one(tp)
+        sk_poly.coeffs[power+1] = minus_one ? -one(tp) : one(tp)
     end
     sk_poly
 end
