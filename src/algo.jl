@@ -84,9 +84,9 @@ function power_extended(mk::MultiplicationKey, cipher::Ciphertext, log_precision
 end
 
 
-function power_series_eager(
+function power_series(
         mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
-        coeffs::Array{Float64, 1})
+        coeffs::Array{Float64, 1}; lazy::Bool=false)
 
     max_pwr = length(coeffs) - 1
     cpows = power_extended(mk, cipher, log_precision, max_pwr)
@@ -101,36 +101,13 @@ function power_series_eager(
             res = add(res, aixi)
         end
     end
-    rescale_by(res, log_precision)
-end
 
-
-function power_series_lazy(
-        mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
-        coeffs::Array{Float64, 1})
-
-    max_pwr = length(coeffs) - 1
-    cpows = power_extended(mk, cipher, log_precision, max_pwr)
-
-    res = mul_by_const(cpows[1], coeffs[2], log_precision)
-    res = add_const(res, coeffs[1])
-
-    for i in 3:length(coeffs)
-        if !iszero(coeffs[i])
-            aixi = mul_by_const(cpows[i - 1], coeffs[i], log_precision)
-            res = mod_down_by(res, res.log_cap - aixi.log_cap)
-            res = add(res, aixi)
-        end
+    if !lazy
+        res = rescale_by(res, log_precision)
     end
 
     res
 end
-
-
-power_series(mk, cipher, log_precision, coeffs; lazy::Bool=false) =
-    lazy ?
-        power_series_lazy(mk, cipher, log_precision, coeffs) :
-        power_series_eager(mk, cipher, log_precision, coeffs)
 
 
 log_plus_one_series(max_pwr) = vcat([0], [(-1)^(k-1) / k for k in 1:max_pwr])
