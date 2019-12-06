@@ -88,6 +88,9 @@ end
 function left_rotate(x::Polynomial, r::Integer)
     res = Polynomial(similar(x.coeffs), x.negacyclic)
     n = length(x.coeffs)
+    # This corresponds to the rotation group used in embedding.jl
+    # Essentially it's rotation_group[r], but this function is too low-level to
+    # create EmbeddingPlan here.
     pow = mod(5^r, 2n)
     for i in 0:n-1
         shift = mod(i * pow, 2n)
