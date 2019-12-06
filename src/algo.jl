@@ -1,6 +1,6 @@
-function power_of_2(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, log_degree::Int)
+function power_bin_exp(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, log_pwr::Int)
     res = cipher
-    for i in 0:log_degree-1
+    for i in 1:log_pwr
         res = square(mk, res)
         res = rescale_by(res, log_precision)
     end
@@ -8,14 +8,12 @@ function power_of_2(mk::MultiplicationKey, cipher::Ciphertext, log_precision::In
 end
 
 
-function power(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, degree::Int)
-    log_degree = floor(Int, log2(degree))
-    po2_degree = 1 << log_degree
-
-    res = power_of_2(mk, cipher, log_precision, log_degree)
-    rem_degree = degree - po2_degree
-    if rem_degree > 0
-        tmp = power(mk, cipher, log_precision, rem_degree)
+function power(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, pwr::Int)
+    log_pwr = num_bits(pwr) - 1
+    res = power_bin_exp(mk, cipher, log_precision, log_pwr)
+    rem_pwr = pwr - (1 << log_pwr)
+    if rem_pwr > 0
+        tmp = power(mk, cipher, log_precision, rem_pwr)
         bits_down = tmp.log_cap - res.log_cap
         tmp = mod_down_by(tmp, bits_down)
         res = mul(mk, res, tmp)

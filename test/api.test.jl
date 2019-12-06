@@ -263,34 +263,6 @@ end
 end
 
 
-@testcase "power_of_2()" begin
-    n = 2^6
-    log_degree = 4
-    degree = 2^log_degree
-    log_precision = 30
-    log_cap = 300
-
-    rng = MersenneTwister(123)
-    params = Params(log_polynomial_length=8, log_lo_modulus=300)
-
-    secret_key = SecretKey(rng, params)
-
-    enc_key = EncryptionKey(rng, secret_key)
-    mul_key = MultiplicationKey(rng, secret_key)
-
-    mvec = rand_circle(rng, 1.0, n)
-    mpow = mvec .^ degree
-
-    cipher = encrypt(rng, enc_key, mvec, log_precision, log_cap)
-
-    cipher_res = power_of_2(mul_key, cipher, log_precision, log_degree)
-
-    dvec = decrypt(secret_key, cipher_res)
-
-    test_approx(mpow, dvec, 19)
-end
-
-
 @testcase "power()" begin
     n = 2^6
     degree = 13
