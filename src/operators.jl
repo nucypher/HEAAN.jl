@@ -32,19 +32,18 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
 
     np = cld(2 + cipher1.log_cap + cipher2.log_cap + params.log_polynomial_length + 2, 59)
 
-    ra1 = ntt_rns(to_rns(plan, cipher1.ax, np))
-    rb1 = ntt_rns(to_rns(plan, cipher1.bx, np))
-    ra2 = ntt_rns(to_rns(plan, cipher2.ax, np))
-    rb2 = ntt_rns(to_rns(plan, cipher2.bx, np))
+    ra1 = to_rns_transformed(plan, cipher1.ax, np)
+    rb1 = to_rns_transformed(plan, cipher1.bx, np)
+    ra2 = to_rns_transformed(plan, cipher2.ax, np)
+    rb2 = to_rns_transformed(plan, cipher2.bx, np)
 
-    tp = Polynomial{BinModuloInt{BigInt, cipher1.log_cap}}
-    axax = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true))
-    bxbx = from_rns(tp, ntt_rns(rb1 * rb2, inverse=true))
+    axax = from_rns_transformed(ra1 * ra2, cipher1.log_cap)
+    bxbx = from_rns_transformed(rb1 * rb2, cipher1.log_cap)
 
     ra1 = ra1 + rb1
     ra2 = ra2 + rb2
 
-    axbx = from_rns(tp, ntt_rns(ra1 * ra2, inverse=true))
+    axbx = from_rns_transformed(ra1 * ra2, cipher1.log_cap)
 
     key = key.key
 
@@ -52,7 +51,7 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
         cipher1.log_cap + params.log_lo_modulus + params.log_hi_modulus +
             params.log_polynomial_length + 2, 59)
 
-    raa = ntt_rns(to_rns(plan, axax, np))
+    raa = to_rns_transformed(plan, axax, np)
 
     #=
     In the paper, we want to find `(P^(-1) * x * y) mod q`,
@@ -65,9 +64,9 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     then shift by `P`.
     =#
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher1.log_cap + params.log_hi_modulus}}
-    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true)) >> params.log_hi_modulus
-    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true)) >> params.log_hi_modulus
+    log_modulus = cipher1.log_cap + params.log_hi_modulus
+    ax = from_rns_transformed(raa * key.rax, log_modulus) >> params.log_hi_modulus
+    bx = from_rns_transformed(raa * key.rbx, log_modulus) >> params.log_hi_modulus
 
     ax = ax + axbx - bxbx - axax
     bx = bx + bxbx
@@ -89,13 +88,12 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
 
     np = cld(2 + cipher.log_cap * 2 + params.log_polynomial_length + 2, 59)
 
-    ra = ntt_rns(to_rns(plan, cipher.ax, np))
-    rb = ntt_rns(to_rns(plan, cipher.bx, np))
+    ra = to_rns_transformed(plan, cipher.ax, np)
+    rb = to_rns_transformed(plan, cipher.bx, np)
 
-    tp = Polynomial{BinModuloInt{BigInt, cipher.log_cap}}
-    axax = from_rns(tp, ntt_rns(ra * ra, inverse=true))
-    bxbx = from_rns(tp, ntt_rns(rb * rb, inverse=true))
-    axbx = from_rns(tp, ntt_rns(ra * rb, inverse=true))
+    axax = from_rns_transformed(ra * ra, cipher.log_cap)
+    bxbx = from_rns_transformed(rb * rb, cipher.log_cap)
+    axbx = from_rns_transformed(ra * rb, cipher.log_cap)
     axbx = axbx + axbx
 
     key = mk.key
@@ -104,11 +102,11 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
         cipher.log_cap + params.log_lo_modulus + params.log_hi_modulus +
             params.log_polynomial_length + 2, 59)
 
-    raa = ntt_rns(to_rns(plan, axax, np))
+    raa = to_rns_transformed(plan, axax, np)
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_hi_modulus}}
-    ax = from_rns(tp_big, ntt_rns(raa * key.rax, inverse=true)) >> params.log_hi_modulus
-    bx = from_rns(tp_big, ntt_rns(raa * key.rbx, inverse=true)) >> params.log_hi_modulus
+    log_modulus = cipher.log_cap + params.log_hi_modulus
+    ax = from_rns_transformed(raa * key.rax, log_modulus) >> params.log_hi_modulus
+    bx = from_rns_transformed(raa * key.rbx, log_modulus) >> params.log_hi_modulus
 
     ax = ax + axbx
     bx = bx + bxbx
@@ -229,7 +227,7 @@ function mul_by_plaintext(cipher::Ciphertext, p::Plaintext)
     np = cld(cipher.log_cap + bnd + params.log_polynomial_length + 2, 59)
 
     plan = rns_plan(params)
-    rpoly = ntt_rns(to_rns(plan, p.polynomial, np))
+    rpoly = to_rns_transformed(plan, p.polynomial, np)
 
     # TODO: use mul_by_rns() here
     Ciphertext(
@@ -257,11 +255,11 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     np = cld(cipher.log_cap + params.log_lo_modulus +
         params.log_hi_modulus + params.log_polynomial_length + 2, 59)
 
-    rarot = ntt_rns(to_rns(plan, axrot, np))
+    rarot = to_rns_transformed(plan, axrot, np)
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_hi_modulus}}
-    ax = from_rns(tp_big, ntt_rns(rarot * rk.key.rax, inverse=true)) >> params.log_hi_modulus
-    bx = from_rns(tp_big, ntt_rns(rarot * rk.key.rbx, inverse=true)) >> params.log_hi_modulus
+    log_modulus = cipher.log_cap + params.log_hi_modulus
+    ax = from_rns_transformed(rarot * rk.key.rax, log_modulus) >> params.log_hi_modulus
+    bx = from_rns_transformed(rarot * rk.key.rbx, log_modulus) >> params.log_hi_modulus
     bx = bx + bxrot
 
     Ciphertext(
@@ -283,11 +281,11 @@ function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
 
     np = cld(cipher.log_cap + params.log_lo_modulus +
         params.log_hi_modulus + params.log_polynomial_length + 2, 59)
-    raconj = ntt_rns(to_rns(plan, axconj, np))
+    raconj = to_rns_transformed(plan, axconj, np)
 
-    tp_big = Polynomial{BinModuloInt{BigInt, cipher.log_cap + params.log_hi_modulus}}
-    ax = from_rns(tp_big, ntt_rns(raconj * ck.key.rax, inverse=true)) >> params.log_hi_modulus
-    bx = from_rns(tp_big, ntt_rns(raconj * ck.key.rbx, inverse=true)) >> params.log_hi_modulus
+    log_modulus = cipher.log_cap + params.log_hi_modulus
+    ax = from_rns_transformed(raconj * ck.key.rax, log_modulus) >> params.log_hi_modulus
+    bx = from_rns_transformed(raconj * ck.key.rbx, log_modulus) >> params.log_hi_modulus
     bx = bx + bxconj
 
     Ciphertext(

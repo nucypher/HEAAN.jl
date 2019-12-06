@@ -4,7 +4,13 @@ struct RNSPolynomial
 end
 
 
-function to_rns(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where {T, Q}
+struct RNSPolynomialTransformed
+    plan :: RNSPlan
+    residuals :: Array{UInt64, 2}
+end
+
+
+function _to_rns(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where {T, Q}
     plen = length(x.coeffs)
     res = Array{UInt64}(undef, plen, np)
     for i in 1:plen
@@ -13,11 +19,42 @@ function to_rns(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where
     RNSPolynomial(plan, res)
 end
 
-# TODO: `length(plan.primes)` should be the default?
-to_rns(plan::RNSPlan, x::Polynomial) = to_rns(plan, x, length(plan.primes))
+
+function _ntt_rns(plan::RNSPlan, x::Array{UInt64, 2}, inverse::Bool)
+    np = size(x, 2)
+    res = similar(x)
+    for j in 1:np
+        r = x[:,j]
+        m = plan.primes[j]
+
+        # TODO: keep residuals already casted to RRElem?
+        tp = RRElem{UInt64, m}
+        rr = DarkIntegers.ntt(tp.(r), inverse=inverse, negacyclic=true)
+
+        res[:,j] .= DarkIntegers.rr_value.(rr)
+    end
+    res
+end
 
 
-function from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial) where {T, Q}
+function _ntt_forward(x::RNSPolynomial)
+    RNSPolynomialTransformed(x.plan, _ntt_rns(x.plan, x.residuals, false))
+end
+
+
+function _ntt_inverse(x::RNSPolynomialTransformed)
+    RNSPolynomial(x.plan, _ntt_rns(x.plan, x.residuals, true))
+end
+
+
+function to_rns_transformed(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where {T, Q}
+    _ntt_forward(_to_rns(plan, x, np))
+end
+
+to_rns_transformed(plan::RNSPlan, x::Polynomial) = to_rns_transformed(plan, x, length(plan.primes))
+
+
+function _from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial) where {T, Q}
     plan = x.plan
     plen = size(x.residuals, 1)
     res = Array{BinModuloInt{T, Q}}(undef, plen)
@@ -28,26 +65,13 @@ function from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial) wher
 end
 
 
-function ntt_rns(x::RNSPolynomial; inverse::Bool=false)
-    plan = x.plan
-    res = Array{UInt64}(undef, size(x.residuals)...)
-    np = size(x.residuals, 2)
-    for j in 1:np
-        r = x.residuals[:,j]
-        m = plan.primes[j]
-
-        # TODO: keep residuals already casted to RRElem?
-        tp = RRElem{UInt64, m}
-        rr = DarkIntegers.ntt(tp.(r), inverse=inverse, negacyclic=true)
-
-        res[:,j] .= DarkIntegers.rr_value.(rr)
-    end
-
-    RNSPolynomial(plan, res)
+function from_rns_transformed(x::RNSPolynomialTransformed, log_modulus::Int)
+    tp = Polynomial{BinModuloInt{BigInt, log_modulus}}
+    _from_rns(tp, _ntt_inverse(x))
 end
 
 
-function Base.:+(x::RNSPolynomial, y::RNSPolynomial)
+function Base.:+(x::RNSPolynomialTransformed, y::RNSPolynomialTransformed)
     # TODO: pick the minimum number of residuals for `x` and `y` for the result?
     plan = x.plan
     res = similar(x.residuals)
@@ -55,11 +79,11 @@ function Base.:+(x::RNSPolynomial, y::RNSPolynomial)
     for j in 1:np
         res[:,j] = addmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
     end
-    RNSPolynomial(plan, res)
+    RNSPolynomialTransformed(plan, res)
 end
 
 
-function Base.:*(x::RNSPolynomial, y::RNSPolynomial)
+function Base.:*(x::RNSPolynomialTransformed, y::RNSPolynomialTransformed)
     # TODO: keep keys and such in M-representation, to speed up multiplication
     # (although make sure `+` is still processed correctly)
     # TODO: pick the minimum number of residuals for `x` and `y` for the result?
@@ -70,15 +94,14 @@ function Base.:*(x::RNSPolynomial, y::RNSPolynomial)
         # TODO: use Barrett reduction, or Montgomery multiplication
         res[:,j] = mulmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
     end
-    RNSPolynomial(plan, res)
+    RNSPolynomialTransformed(plan, res)
 end
 
 
-function mult(x::T, y::RNSPolynomial, np::Int) where T <: Polynomial
+function mult(x::Polynomial{BinModuloInt{T, Q}}, y::RNSPolynomialTransformed, np::Int) where {T, Q}
     plan = y.plan
-    x_rns = ntt_rns(to_rns(plan, x, np), inverse=false)
-    res_rns = ntt_rns(x_rns * y, inverse=true)
-    from_rns(T, res_rns)
+    x_rns = to_rns_transformed(plan, x, np)
+    from_rns_transformed(x_rns * y, Q)
 end
 
 

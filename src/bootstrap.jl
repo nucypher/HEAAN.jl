@@ -1,9 +1,9 @@
 struct BootContext
 
-    rpvec :: Array{RNSPolynomial, 1}
-    rpvecInv :: Array{RNSPolynomial, 1}
-    rp1 :: RNSPolynomial
-    rp2 :: RNSPolynomial
+    rpvec :: Array{RNSPolynomialTransformed, 1}
+    rpvecInv :: Array{RNSPolynomialTransformed, 1}
+    rp1 :: RNSPolynomialTransformed
+    rp2 :: RNSPolynomialTransformed
 
     bndvec :: Array{Int, 1}
     bndvecInv :: Array{Int, 1}
@@ -28,8 +28,8 @@ struct BootContext
         log_plen = params.log_polynomial_length
         plen = 2^log_plen
 
-        rpvec = Array{RNSPolynomial}(undef, slots)
-        rpvecInv = Array{RNSPolynomial}(undef, slots)
+        rpvec = Array{RNSPolynomialTransformed}(undef, slots)
+        rpvecInv = Array{RNSPolynomialTransformed}(undef, slots)
 
         bndvec = Array{Int}(undef, slots)
         bndvecInv = Array{Int}(undef, slots)
@@ -66,7 +66,7 @@ struct BootContext
                     end
                     bndvec[pos + 1] = maximum(num_bits.(pvec))
                     np = cld(bndvec[pos + 1] + params.log_lo_modulus + 2 * log_plen + 2, 59)
-                    rpvec[pos + 1] = ntt_rns(to_rns(r_plan, Polynomial(pvec, true), np))
+                    rpvec[pos + 1] = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
                     for i in 0:plen-1
                         pvec[i + 1] = zero(tp)
                     end
@@ -86,7 +86,7 @@ struct BootContext
             end
             bnd1 = maximum(num_bits.(pvec))
             np = cld(bnd1 + params.log_lo_modulus + 2 * log_plen + 2, 59)
-            rp1 = ntt_rns(to_rns(r_plan, Polynomial(pvec, true), np))
+            rp1 = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
             for i in 0:plen-1
                 pvec[i+1] = zero(tp)
             end
@@ -105,7 +105,7 @@ struct BootContext
             end
             bnd2 = maximum(num_bits.(pvec))
             np = cld(bnd2 + params.log_lo_modulus + 2 * log_plen + 2, 59)
-            rp2 = ntt_rns(to_rns(r_plan, Polynomial(pvec, true), np))
+            rp2 = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
             for i in 0:plen-1
                 pvec[i+1] = zero(tp)
             end
@@ -133,7 +133,7 @@ struct BootContext
                     end
                     bndvec[pos+1] = maximum(num_bits.(pvec))
                     np = cld(bndvec[pos+1] + params.log_lo_modulus + 2 * log_plen + 2, 59)
-                    rpvec[pos+1] = ntt_rns(to_rns(r_plan, Polynomial(pvec, true), np))
+                    rpvec[pos+1] = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
                     for i in 0:plen-1
                         pvec[i+1] = zero(tp)
                     end
@@ -141,9 +141,9 @@ struct BootContext
             end
 
             # These will be unused
-            rp1 = RNSPolynomial(r_plan, Array{UInt64}(undef, plen, 1))
+            rp1 = RNSPolynomialTransformed(r_plan, Array{UInt64}(undef, plen, 1))
             bnd1 = 0
-            rp2 = RNSPolynomial(r_plan, Array{UInt64}(undef, plen, 1))
+            rp2 = RNSPolynomialTransformed(r_plan, Array{UInt64}(undef, plen, 1))
             bnd2 = 0
         end
 
@@ -169,7 +169,7 @@ struct BootContext
                 end
                 bndvecInv[pos+1] = maximum(num_bits.(pvec))
                 np = cld(bndvecInv[pos+1] + params.log_lo_modulus + 2 * log_plen + 2, 59)
-                rpvecInv[pos+1] = ntt_rns(to_rns(r_plan, Polynomial(pvec, true), np))
+                rpvecInv[pos+1] = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
                 for i in 0:plen-1
                     pvec[i+1] = zero(tp)
                 end
@@ -235,7 +235,7 @@ end
 
 
 # TODO: `np` or `bnd` should be encapsulated in RNSPolynomial already
-function mul_by_rns(cipher::Ciphertext, p::RNSPolynomial, bnd::Int, log_precision::Int)
+function mul_by_rns(cipher::Ciphertext, p::RNSPolynomialTransformed, bnd::Int, log_precision::Int)
     np = cld(cipher.log_cap + bnd + cipher.params.log_polynomial_length + 2, 59)
     Ciphertext(
         cipher.params,

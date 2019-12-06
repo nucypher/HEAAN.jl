@@ -1,6 +1,6 @@
 struct PublicKeyRNS
-    rax :: RNSPolynomial
-    rbx :: RNSPolynomial
+    rax :: RNSPolynomialTransformed
+    rbx :: RNSPolynomialTransformed
 end
 
 
@@ -18,8 +18,8 @@ struct EncryptionKey
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
         plan = rns_plan(params)
-        rax = ntt_rns(to_rns(plan, ax))
-        rbx = ntt_rns(to_rns(plan, bx))
+        rax = to_rns_transformed(plan, ax)
+        rbx = to_rns_transformed(plan, bx)
 
         new(params, PublicKeyRNS(rax, rbx))
     end
@@ -43,8 +43,8 @@ struct MultiplicationKey
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax + sxsx
 
         plan = rns_plan(params)
-        rax = ntt_rns(to_rns(plan, ax))
-        rbx = ntt_rns(to_rns(plan, bx))
+        rax = to_rns_transformed(plan, ax)
+        rbx = to_rns_transformed(plan, bx)
 
         new(params, PublicKeyRNS(rax, rbx))
     end
@@ -71,8 +71,8 @@ struct LeftRotationKey
         bx = bx + spow
 
         plan = rns_plan(params)
-        rax = ntt_rns(to_rns(plan, ax))
-        rbx = ntt_rns(to_rns(plan, bx))
+        rax = to_rns_transformed(plan, ax)
+        rbx = to_rns_transformed(plan, bx)
 
         new(params, PublicKeyRNS(rax, rbx), shift)
     end
@@ -99,8 +99,8 @@ struct ConjugationKey
         bx = bx + sxconj
 
         plan = rns_plan(params)
-        rax = ntt_rns(to_rns(plan, ax))
-        rbx = ntt_rns(to_rns(plan, bx))
+        rax = to_rns_transformed(plan, ax)
+        rbx = to_rns_transformed(plan, bx)
 
         new(params, PublicKeyRNS(rax, rbx))
     end
