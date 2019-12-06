@@ -77,15 +77,6 @@ function float_to_integer(
 end
 
 
-function float_to_integer(::Type{V}, x::BigFloat, shift::Int, log_modulus::Int) where V <: Integer
-    xc = copy(x)
-    xc.exp += shift
-    xi = round(V, xc)
-    res = convert(V, xi)
-    signbit(xi) ? modulus(V, log_modulus) + res : res
-end
-
-
 """
 Convert an integer `x` to float and divide by `2^shift`.
 `x` must lie in range `[0, 2^log_modulus)`.

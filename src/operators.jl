@@ -167,7 +167,7 @@ function rescale_by(cipher::Ciphertext, dlog_cap::Int)
 end
 
 
-function add_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64})
+function add_const(cipher::Ciphertext, cnst::Float64)
     tp = BinModuloInt{BigInt, cipher.log_cap}
     cnst_big = float_to_integer(tp, cnst, cipher.log_precision)
     Ciphertext(
@@ -185,7 +185,7 @@ function add_const(cipher::Ciphertext, cnst::Complex{Float64})
 end
 
 
-function mul_by_const(cipher::Ciphertext, cnst::Union{BigFloat, Float64}, log_precision::Int)
+function mul_by_const(cipher::Ciphertext, cnst::Float64, log_precision::Int)
     tp = BinModuloInt{BigInt, cipher.log_cap}
     cnst_big = float_to_integer(tp, cnst, log_precision)
     Ciphertext(
