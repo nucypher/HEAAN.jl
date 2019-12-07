@@ -1,4 +1,4 @@
-using HEAAN: BinModuloInt, RNSPlan, to_rns, from_rns, to_rns_signed, from_rns_signed, nprimes_for_modulus
+using HEAAN: BinModuloInt, RNSPlan, to_rns, from_rns, to_rns_signed, from_rns_signed, min_nprimes
 
 
 @testgroup "RNS" begin
@@ -63,14 +63,14 @@ end
 
     max_log = floor(Int, log2(prod(primes)))
     for log_modulus in 1:max_log
-        nprimes = nprimes_for_modulus(plan, log_modulus)
+        nprimes = min_nprimes(plan, log_modulus)
         if prod(primes[1:nprimes]) < 2^log_modulus
             @test_fail "Got an incorrect range ($nprimes) for log_modulus=$log_modulus"
             return
         end
     end
 
-    @test_throws DomainError nprimes_for_modulus(plan, max_log + 1)
+    @test_throws DomainError min_nprimes(plan, max_log + 1)
 end
 
 

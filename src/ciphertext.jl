@@ -20,6 +20,7 @@ struct Ciphertext
             params::Params, ax::Polynomial{BinModuloInt{T, Q}},
             bx::Polynomial{BinModuloInt{T, Q}},
             log_cap::Int, log_precision::Int, slots::Int) where {T, Q}
+        @assert log_cap <= params.log_lo_modulus
         @assert log_cap == Q
         @assert log_precision > 0
         @assert log_precision <= Q
@@ -36,7 +37,9 @@ function compatible(c1::Ciphertext, c2::Ciphertext; different_precision::Bool=fa
 end
 
 
-function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision::Int, log_modulus::Int)
+function encode(
+        params::Params, vals::Array{Complex{Float64}, 1}, log_precision::Int, log_modulus::Int,
+        minimize_range::Bool=false)
     plen = 2^params.log_polynomial_length
     slots = length(vals)
     gap = plen ÷ 2 ÷ slots
@@ -46,6 +49,15 @@ function encode(params::Params, vals::Array{Complex{Float64}, 1}, log_precision:
     mx[1,:,1] = float_to_integer.(tp, real.(uvals), log_precision)
     mx[1,:,2] = float_to_integer.(tp, imag.(uvals), log_precision)
     poly = Polynomial(mx[:], true)
+
+    if minimize_range
+        nb = maximum(num_bits.(mx))
+        # +1 to make sure all numbers from `-m` to `m` fit into the type
+        # (where `m` is the maximum number that has `num_bits == nb`, that is `2^(nb+1)-1`).
+        new_log_modulus = nb + 1
+        poly = mod_down_to(poly, new_log_modulus)
+    end
+
     Plaintext(params, poly, log_modulus, log_precision, slots)
 end
 
@@ -61,28 +73,24 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
     plen = 2^params.log_polynomial_length
 
     log_modulus = plain.log_cap
-    modulus = one(BigInt) << log_modulus
 
-    vx = sample_ZO(rng, 2^params.log_polynomial_length, log_modulus)
-
-    # TODO: `log_modulus` should be enough here?
-    np = cld(1 + params.log_lo_modulus + params.log_hi_modulus + params.log_polynomial_length + 2, 59)
+    vx = sample_ZO(rng, 2^params.log_polynomial_length)
 
     ax = (
         discrete_gaussian(rng, params.gaussian_noise_stddev, plen) +
-        mult(vx, key.key.rax, np))
+        mult(vx, key.key.rax, log_modulus))
 
     bx = (
         discrete_gaussian(rng, params.gaussian_noise_stddev, plen) +
         plain.polynomial +
-        mult(vx, key.key.rbx, np))
+        mult(vx, key.key.rbx, log_modulus))
 
-    ax = ax >> params.log_lo_modulus
-    bx = bx >> params.log_lo_modulus
+    ax = ax >> params.log_hi_modulus
+    bx = bx >> params.log_hi_modulus
 
     Ciphertext(params, ax, bx,
-        plain.log_cap - params.log_lo_modulus,
-        plain.log_precision - params.log_lo_modulus, plain.slots)
+        plain.log_cap - params.log_hi_modulus,
+        plain.log_precision - params.log_hi_modulus, plain.slots)
 end
 
 
@@ -92,7 +100,7 @@ function encrypt(
     params = key.params
     plain = encode(
         params, vals,
-        log_precision + params.log_lo_modulus, log_cap + params.log_lo_modulus)
+        log_precision + params.log_hi_modulus, log_cap + params.log_hi_modulus)
     encrypt(rng, key, plain)
 end
 

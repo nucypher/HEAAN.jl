@@ -23,35 +23,30 @@ end
 
 
 function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
-    # TODO: technically, log_precision may differ?
     @assert compatible(cipher1, cipher2, different_precision=true)
     # TODO: check compatibility with the public key as well
 
     params = cipher1.params
     plan = rns_plan(params)
 
-    np = cld(2 + cipher1.log_cap + cipher2.log_cap + params.log_polynomial_length + 2, 59)
+    log_cap = cipher1.log_cap
 
-    ra1 = to_rns_transformed(plan, cipher1.ax, np)
-    rb1 = to_rns_transformed(plan, cipher1.bx, np)
-    ra2 = to_rns_transformed(plan, cipher2.ax, np)
-    rb2 = to_rns_transformed(plan, cipher2.bx, np)
+    ra1 = to_rns_transformed(plan, cipher1.ax, log_cap)
+    rb1 = to_rns_transformed(plan, cipher1.bx, log_cap)
+    ra2 = to_rns_transformed(plan, cipher2.ax, log_cap)
+    rb2 = to_rns_transformed(plan, cipher2.bx, log_cap)
 
-    axax = from_rns_transformed(ra1 * ra2, cipher1.log_cap)
-    bxbx = from_rns_transformed(rb1 * rb2, cipher1.log_cap)
+    axax = from_rns_transformed(ra1 * ra2, log_cap)
+    bxbx = from_rns_transformed(rb1 * rb2, log_cap)
 
     ra1 = ra1 + rb1
     ra2 = ra2 + rb2
 
-    axbx = from_rns_transformed(ra1 * ra2, cipher1.log_cap)
+    axbx = from_rns_transformed(ra1 * ra2, log_cap)
 
     key = key.key
 
-    np = cld(
-        cipher1.log_cap + params.log_lo_modulus + params.log_hi_modulus +
-            params.log_polynomial_length + 2, 59)
-
-    raa = to_rns_transformed(plan, axax, np)
+    raa = to_rns_transformed(plan, axax, params.log_lo_modulus + params.log_hi_modulus)
 
     #=
     In the paper, we want to find `(P^(-1) * x * y) mod q`,
@@ -85,24 +80,19 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
 
     params = cipher.params
     plan = rns_plan(params)
+    log_cap = cipher.log_cap
 
-    np = cld(2 + cipher.log_cap * 2 + params.log_polynomial_length + 2, 59)
+    ra = to_rns_transformed(plan, cipher.ax, log_cap)
+    rb = to_rns_transformed(plan, cipher.bx, log_cap)
 
-    ra = to_rns_transformed(plan, cipher.ax, np)
-    rb = to_rns_transformed(plan, cipher.bx, np)
-
-    axax = from_rns_transformed(ra * ra, cipher.log_cap)
-    bxbx = from_rns_transformed(rb * rb, cipher.log_cap)
-    axbx = from_rns_transformed(ra * rb, cipher.log_cap)
+    axax = from_rns_transformed(ra * ra, log_cap)
+    bxbx = from_rns_transformed(rb * rb, log_cap)
+    axbx = from_rns_transformed(ra * rb, log_cap)
     axbx = axbx + axbx
 
     key = mk.key
 
-    np = cld(
-        cipher.log_cap + params.log_lo_modulus + params.log_hi_modulus +
-            params.log_polynomial_length + 2, 59)
-
-    raa = to_rns_transformed(plan, axax, np)
+    raa = to_rns_transformed(plan, axax, params.log_lo_modulus + params.log_hi_modulus)
 
     log_modulus = cipher.log_cap + params.log_hi_modulus
     ax = from_rns_transformed(raa * key.rax, log_modulus) >> params.log_hi_modulus
@@ -216,24 +206,27 @@ end
 
 
 function mul_by_const_vec(cipher::Ciphertext, v::Array{Complex{Float64}, 1}, log_precision::Int)
-    p = encode(cipher.params, v, log_precision, cipher.log_cap)
+    p = encode(cipher.params, v, log_precision, cipher.log_cap, true)
     mul_by_plaintext(cipher, p)
 end
 
 
 function mul_by_plaintext(cipher::Ciphertext, p::Plaintext)
+    @assert cipher.params == p.params
+    @assert cipher.slots == p.slots
+    # `cipher` and `p` can have different `log_precision` (since it is multiplication),
+    # but also different `log_cap` (since for the plaintext we can increase `log_cap` safely).
+
     params = cipher.params
-    bnd = maximum(num_bits.(p.polynomial.coeffs))
-    np = cld(cipher.log_cap + bnd + params.log_polynomial_length + 2, 59)
 
     plan = rns_plan(params)
-    rpoly = to_rns_transformed(plan, p.polynomial, np)
+    rpoly = to_rns_transformed(plan, p.polynomial, cipher.log_cap)
 
     # TODO: use mul_by_rns() here
     Ciphertext(
         cipher.params,
-        mult(cipher.ax, rpoly, np),
-        mult(cipher.bx, rpoly, np),
+        mult(cipher.ax, rpoly),
+        mult(cipher.bx, rpoly),
         cipher.log_cap,
         cipher.log_precision + p.log_precision,
         cipher.slots)
@@ -252,10 +245,7 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     axrot = left_rotate(cipher.ax, shift)
     bxrot = left_rotate(cipher.bx, shift)
 
-    np = cld(cipher.log_cap + params.log_lo_modulus +
-        params.log_hi_modulus + params.log_polynomial_length + 2, 59)
-
-    rarot = to_rns_transformed(plan, axrot, np)
+    rarot = to_rns_transformed(plan, axrot, params.log_lo_modulus + params.log_hi_modulus)
 
     log_modulus = cipher.log_cap + params.log_hi_modulus
     ax = from_rns_transformed(rarot * rk.key.rax, log_modulus) >> params.log_hi_modulus
@@ -279,9 +269,7 @@ function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
     axconj = conjugate(cipher.ax)
     bxconj = conjugate(cipher.bx)
 
-    np = cld(cipher.log_cap + params.log_lo_modulus +
-        params.log_hi_modulus + params.log_polynomial_length + 2, 59)
-    raconj = to_rns_transformed(plan, axconj, np)
+    raconj = to_rns_transformed(plan, axconj, params.log_lo_modulus + params.log_hi_modulus)
 
     log_modulus = cipher.log_cap + params.log_hi_modulus
     ax = from_rns_transformed(raconj * ck.key.rax, log_modulus) >> params.log_hi_modulus

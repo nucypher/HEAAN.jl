@@ -1,22 +1,50 @@
 struct RNSPolynomial
     plan :: RNSPlan
     residuals :: Array{UInt64, 2}
+
+    # The numbers stored are guaranteed to fit into `log_modulus` bits,
+    # that is they lie in `(P - 2^(log_modulus-1) + 1, P - 1] U [0, 2^(log_modulus-1)]`,
+    # where `P = prod(plan.primes[1:np])`, and `np` is the second dimension of `residuals`
+    # (and, of course, `P > 2^log_modulus - 1`, so these intervals don't intersect).
+    log_modulus :: Int
+
+    # The maximum possible range for stored numbers for the given number of residuals.
+    # `log_modulus` can't get greater than this.
+    # `log_range` has a one-to-one correspondence with the number of primes used.
+    log_range :: Int
+
+    function RNSPolynomial(plan, residuals, log_modulus, log_range)
+        @assert log_modulus <= log_range
+        @assert log_range == max_log_modulus(plan, size(residuals, 2))
+        new(plan, residuals, log_modulus, log_range)
+    end
 end
 
 
 struct RNSPolynomialTransformed
     plan :: RNSPlan
     residuals :: Array{UInt64, 2}
+    log_modulus :: Int
+    log_range :: Int
+
+    function RNSPolynomialTransformed(plan, residuals, log_modulus, log_range)
+        @assert log_modulus <= log_range
+        new(plan, residuals, log_modulus, log_range)
+    end
 end
 
 
-function _to_rns(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where {T, Q}
+function _to_rns(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, log_range::Int) where {T, Q}
+
+    np = min_nprimes(plan, log_range)
+    log_range = max_log_modulus(plan, np)
+
     plen = length(x.coeffs)
     res = Array{UInt64}(undef, plen, np)
     for i in 1:plen
         res[i,:] .= to_rns_signed(plan, x.coeffs[i], np)
     end
-    RNSPolynomial(plan, res)
+    RNSPolynomial(plan, res, Q, log_range)
 end
 
 
@@ -38,23 +66,32 @@ end
 
 
 function _ntt_forward(x::RNSPolynomial)
-    RNSPolynomialTransformed(x.plan, _ntt_rns(x.plan, x.residuals, false))
+    RNSPolynomialTransformed(
+        x.plan, _ntt_rns(x.plan, x.residuals, false), x.log_modulus, x.log_range)
 end
 
 
 function _ntt_inverse(x::RNSPolynomialTransformed)
-    RNSPolynomial(x.plan, _ntt_rns(x.plan, x.residuals, true))
+    RNSPolynomial(
+        x.plan, _ntt_rns(x.plan, x.residuals, true), x.log_modulus, x.log_range)
 end
 
 
-function to_rns_transformed(plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, np::Int) where {T, Q}
-    _ntt_forward(_to_rns(plan, x, np))
+function to_rns_transformed(
+        plan::RNSPlan, x::Polynomial{BinModuloInt{T, Q}}, add_range::Int=0) where {T, Q}
+
+    # The intention is to have enough range for one multiplication of this polynomial
+    # and another one with `log_modulus <= add_range`.
+    log_range = _log_modulus_mul(Q, add_range, length(x.coeffs))
+
+    _ntt_forward(_to_rns(plan, x, log_range))
 end
 
 to_rns_transformed(plan::RNSPlan, x::Polynomial) = to_rns_transformed(plan, x, length(plan.primes))
 
 
 function _from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial) where {T, Q}
+    @assert Q <= x.log_range
     plan = x.plan
     plen = size(x.residuals, 1)
     res = Array{BinModuloInt{T, Q}}(undef, plen)
@@ -65,43 +102,79 @@ function _from_rns(::Type{Polynomial{BinModuloInt{T, Q}}}, x::RNSPolynomial) whe
 end
 
 
-function from_rns_transformed(x::RNSPolynomialTransformed, log_modulus::Int)
+function from_rns_transformed(x::RNSPolynomialTransformed, log_modulus::Int=0)
+    if log_modulus == 0
+        log_modulus = x.log_modulus
+    else
+        @assert log_modulus <= x.log_modulus
+    end
     tp = Polynomial{BinModuloInt{BigInt, log_modulus}}
     _from_rns(tp, _ntt_inverse(x))
 end
 
 
 function Base.:+(x::RNSPolynomialTransformed, y::RNSPolynomialTransformed)
-    # TODO: pick the minimum number of residuals for `x` and `y` for the result?
+
+    # The modulus can grow at worst by one bit
+    # (if we're adding two maximum or two minimum possible numbers)
+    new_log_modulus = max(x.log_modulus, y.log_modulus) + 1
+
+    new_log_range = min(x.log_range, y.log_range)
+    @assert new_log_modulus <= new_log_range
+
     plan = x.plan
-    res = similar(x.residuals)
-    np = size(x.residuals, 2)
+    np = min(size(x.residuals, 2), size(y.residuals, 2))
+    res = Array{UInt64}(undef, size(x.residuals, 1), np)
     for j in 1:np
         res[:,j] = addmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
     end
-    RNSPolynomialTransformed(plan, res)
+    RNSPolynomialTransformed(plan, res, new_log_modulus, new_log_range)
+end
+
+
+function _log_modulus_mul(log_modulus1::Int, log_modulus2::Int, polynomial_length::Int)
+    # The result is the product of polynomials, so the maximum number we can encounter
+    # is the polynomial-length sum of products of maximum numbers from `x` and `y`
+    # (perhaps that's even a bit too conservative for negacyclic polynomials).
+    log_plen = num_bits(polynomial_length) - 1
+
+    # `-1` is because each coefficient <= 2^(log_modulus-1)
+    # So the maximum is <= 2^(log_modulus1-1) * 2^(log_modulus2-1) * 2^log_plen
+    # `+1` because we need to fit both positive and negative numbers of that range.
+    (log_modulus1 - 1) + (log_modulus2 - 1) + log_plen + 1
 end
 
 
 function Base.:*(x::RNSPolynomialTransformed, y::RNSPolynomialTransformed)
     # TODO: keep keys and such in M-representation, to speed up multiplication
     # (although make sure `+` is still processed correctly)
-    # TODO: pick the minimum number of residuals for `x` and `y` for the result?
+
+    plen = size(x.residuals, 1)
+    new_log_modulus = _log_modulus_mul(x.log_modulus, y.log_modulus, plen)
+
+    new_log_range = min(x.log_range, y.log_range)
+    @assert new_log_modulus <= new_log_range
+
     plan = x.plan
-    res = similar(x.residuals)
-    np = size(x.residuals, 2)
+    np = min(size(x.residuals, 2), size(y.residuals, 2))
+    res = Array{UInt64}(undef, size(x.residuals, 1), np)
     for j in 1:np
         # TODO: use Barrett reduction, or Montgomery multiplication
         res[:,j] = mulmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
     end
-    RNSPolynomialTransformed(plan, res)
+    RNSPolynomialTransformed(plan, res, new_log_modulus, new_log_range)
 end
 
 
-function mult(x::Polynomial{BinModuloInt{T, Q}}, y::RNSPolynomialTransformed, np::Int) where {T, Q}
+poly_lm(x::Polynomial{BinModuloInt{T, Q}}) where {T, Q} = Q
+
+
+function mult(
+        x::Polynomial{BinModuloInt{T, Q}}, y::RNSPolynomialTransformed,
+        log_modulus::Int=0) where {T, Q}
     plan = y.plan
-    x_rns = to_rns_transformed(plan, x, np)
-    from_rns_transformed(x_rns * y, Q)
+    x_rns = _ntt_forward(_to_rns(plan, x, y.log_range))
+    from_rns_transformed(x_rns * y, log_modulus == 0 ? Q : log_modulus)
 end
 
 

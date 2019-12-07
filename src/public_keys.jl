@@ -10,16 +10,20 @@ struct EncryptionKey
 
     function EncryptionKey(rng::AbstractRNG, secret_key::SecretKey)
         params = secret_key.params
-        log_modulus = params.log_hi_modulus + params.log_lo_modulus
         log_plen = params.log_polynomial_length
         plen = 2^log_plen
+
+        # TODO: C++ HEAAN has `log_lo_modulus + log_hi_modulus` here for the encryption key
+        # (that is, P * q_L in the notation of the paper)
+        # But in both HEAAN papers only `q_L` is used as the encryption key modulus.
+        log_modulus = params.log_lo_modulus + params.log_hi_modulus
 
         ax = rand_big_int(rng, log_modulus, plen)
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
         plan = rns_plan(params)
-        rax = to_rns_transformed(plan, ax)
-        rbx = to_rns_transformed(plan, bx)
+        rax = to_rns_transformed(plan, ax, params.log_lo_modulus)
+        rbx = to_rns_transformed(plan, bx, params.log_lo_modulus)
 
         new(params, PublicKeyRNS(rax, rbx))
     end
@@ -43,8 +47,8 @@ struct MultiplicationKey
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax + sxsx
 
         plan = rns_plan(params)
-        rax = to_rns_transformed(plan, ax)
-        rbx = to_rns_transformed(plan, bx)
+        rax = to_rns_transformed(plan, ax, params.log_lo_modulus)
+        rbx = to_rns_transformed(plan, bx, params.log_lo_modulus)
 
         new(params, PublicKeyRNS(rax, rbx))
     end
@@ -67,12 +71,14 @@ struct LeftRotationKey
         ax = rand_big_int(rng, log_modulus, plen)
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
-        spow = left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift) << params.log_hi_modulus
+        spow = (
+            left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift)
+                << params.log_hi_modulus)
         bx = bx + spow
 
         plan = rns_plan(params)
-        rax = to_rns_transformed(plan, ax)
-        rbx = to_rns_transformed(plan, bx)
+        rax = to_rns_transformed(plan, ax, params.log_lo_modulus)
+        rbx = to_rns_transformed(plan, bx, params.log_lo_modulus)
 
         new(params, PublicKeyRNS(rax, rbx), shift)
     end
@@ -89,7 +95,7 @@ struct ConjugationKey
         log_plen = params.log_polynomial_length
         plen = 2^log_plen
 
-        np = cld(1 + log_modulus + log_plen + 2, 59)
+        #np = cld(1 + log_modulus + log_plen + 2, 59)
 
         ax = rand_big_int(rng, log_modulus, plen)
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
@@ -99,8 +105,8 @@ struct ConjugationKey
         bx = bx + sxconj
 
         plan = rns_plan(params)
-        rax = to_rns_transformed(plan, ax)
-        rbx = to_rns_transformed(plan, bx)
+        rax = to_rns_transformed(plan, ax, params.log_lo_modulus)
+        rbx = to_rns_transformed(plan, bx, params.log_lo_modulus)
 
         new(params, PublicKeyRNS(rax, rbx))
     end

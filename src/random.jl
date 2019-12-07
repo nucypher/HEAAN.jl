@@ -4,9 +4,12 @@ function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
 end
 
 
-function sample_ZO(rng::AbstractRNG, len::Int, log_modulus::Int)
-    zero_val = zero(BinModuloInt{BigInt, log_modulus})
-    one_val = one(BinModuloInt{BigInt, log_modulus})
+# TODO: store just as {-1, 0, 1} and use multiplication by shifts
+function sample_ZO(rng::AbstractRNG, len::Int)
+    # We only need to store -1, 0 and 1
+    tp = BinModuloInt{BigInt, 2}
+    zero_val = zero(tp)
+    one_val = one(tp)
     minus_one = -one_val
 
     bits1 = rand(rng, Bool, len)

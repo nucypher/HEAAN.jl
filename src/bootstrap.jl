@@ -5,11 +5,6 @@ struct BootContext
     rp1 :: RNSPolynomialTransformed
     rp2 :: RNSPolynomialTransformed
 
-    bndvec :: Array{Int, 1}
-    bndvecInv :: Array{Int, 1}
-    bnd1 :: Int
-    bnd2 :: Int
-
     log_precision :: Int
     log_slots :: Int
 
@@ -30,9 +25,6 @@ struct BootContext
 
         rpvec = Array{RNSPolynomialTransformed}(undef, slots)
         rpvecInv = Array{RNSPolynomialTransformed}(undef, slots)
-
-        bndvec = Array{Int}(undef, slots)
-        bndvecInv = Array{Int}(undef, slots)
 
         # TODO: is log_precision + 1 enough?
         tp = BinModuloInt{BigInt, log_precision + 1}
@@ -64,9 +56,8 @@ struct BootContext
                         pvec[idx + 1] = float_to_integer(tp, real(pvals[i + 1]), log_precision)
                         pvec[jdx + 1] = float_to_integer(tp, imag(pvals[i + 1]), log_precision)
                     end
-                    bndvec[pos + 1] = maximum(num_bits.(pvec))
-                    np = cld(bndvec[pos + 1] + params.log_lo_modulus + 2 * log_plen + 2, 59)
-                    rpvec[pos + 1] = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
+                    rpvec[pos + 1] = to_rns_transformed(
+                        r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
                     for i in 0:plen-1
                         pvec[i + 1] = zero(tp)
                     end
@@ -84,9 +75,8 @@ struct BootContext
                 pvec[idx + 1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
                 pvec[jdx + 1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
             end
-            bnd1 = maximum(num_bits.(pvec))
-            np = cld(bnd1 + params.log_lo_modulus + 2 * log_plen + 2, 59)
-            rp1 = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
+            rp1 = to_rns_transformed(
+                r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
             for i in 0:plen-1
                 pvec[i+1] = zero(tp)
             end
@@ -103,9 +93,8 @@ struct BootContext
                 pvec[idx+1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
                 pvec[jdx+1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
             end
-            bnd2 = maximum(num_bits.(pvec))
-            np = cld(bnd2 + params.log_lo_modulus + 2 * log_plen + 2, 59)
-            rp2 = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
+            rp2 = to_rns_transformed(
+                r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
             for i in 0:plen-1
                 pvec[i+1] = zero(tp)
             end
@@ -131,9 +120,8 @@ struct BootContext
                         pvec[idx+1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
                         pvec[jdx+1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
                     end
-                    bndvec[pos+1] = maximum(num_bits.(pvec))
-                    np = cld(bndvec[pos+1] + params.log_lo_modulus + 2 * log_plen + 2, 59)
-                    rpvec[pos+1] = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
+                    rpvec[pos+1] = to_rns_transformed(
+                        r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
                     for i in 0:plen-1
                         pvec[i+1] = zero(tp)
                     end
@@ -142,9 +130,7 @@ struct BootContext
 
             # These will be unused
             rp1 = RNSPolynomialTransformed(r_plan, Array{UInt64}(undef, plen, 1))
-            bnd1 = 0
             rp2 = RNSPolynomialTransformed(r_plan, Array{UInt64}(undef, plen, 1))
-            bnd2 = 0
         end
 
         for ki in 0:k:slots-1
@@ -167,16 +153,15 @@ struct BootContext
                     pvec[idx+1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
                     pvec[jdx+1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
                 end
-                bndvecInv[pos+1] = maximum(num_bits.(pvec))
-                np = cld(bndvecInv[pos+1] + params.log_lo_modulus + 2 * log_plen + 2, 59)
-                rpvecInv[pos+1] = to_rns_transformed(r_plan, Polynomial(pvec, true), np)
+                rpvecInv[pos+1] = to_rns_transformed(
+                    r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
                 for i in 0:plen-1
                     pvec[i+1] = zero(tp)
                 end
             end
         end
 
-        new(rpvec, rpvecInv, rp1, rp2, bndvec, bndvecInv, bnd1, bnd2, log_precision, log_slots)
+        new(rpvec, rpvecInv, rp1, rp2, log_precision, log_slots)
     end
 
 end
@@ -234,13 +219,11 @@ struct BootstrapKey
 end
 
 
-# TODO: `np` or `bnd` should be encapsulated in RNSPolynomial already
-function mul_by_rns(cipher::Ciphertext, p::RNSPolynomialTransformed, bnd::Int, log_precision::Int)
-    np = cld(cipher.log_cap + bnd + cipher.params.log_polynomial_length + 2, 59)
+function mul_by_rns(cipher::Ciphertext, p::RNSPolynomialTransformed, log_precision::Int)
     Ciphertext(
         cipher.params,
-        mult(cipher.ax, p, np),
-        mult(cipher.bx, p, np),
+        mult(cipher.ax, p),
+        mult(cipher.bx, p),
         cipher.log_cap,
         cipher.log_precision + log_precision,
         cipher.slots)
@@ -266,7 +249,7 @@ function coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     tmpvec = Array{Ciphertext}(undef, k)
 
     for j in 0:k-1
-        tmpvec[j+1] = mul_by_rns(rotvec[j+1], bc.rpvec[j+1], bc.bndvec[j+1], bc.log_precision)
+        tmpvec[j+1] = mul_by_rns(rotvec[j+1], bc.rpvec[j+1], bc.log_precision)
     end
 
     for j in 1:k-1
@@ -278,7 +261,7 @@ function coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     for ki in k:k:slots-1
         for j in 0:k-1
             tmpvec[j+1] = mul_by_rns(
-                rotvec[j+1], bc.rpvec[j+ki+1], bc.bndvec[j+ki+1], bc.log_precision)
+                rotvec[j+1], bc.rpvec[j+ki+1], bc.log_precision)
         end
         for j in 1:k-1
             tmpvec[0+1] = add(tmpvec[0+1], tmpvec[j+1])
@@ -310,7 +293,7 @@ function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
 
     for j in 0:k-1
         tmpvec[j+1] = mul_by_rns(
-            rotvec[j+1], bc.rpvecInv[j+1], bc.bndvecInv[j+1], bc.log_precision)
+            rotvec[j+1], bc.rpvecInv[j+1], bc.log_precision)
     end
 
     for j in 1:k-1
@@ -321,7 +304,7 @@ function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     for ki in k:k:slots-1
         for j in 0:k-1
             tmpvec[j+1] = mul_by_rns(
-                rotvec[j+1], bc.rpvecInv[j+ki+1], bc.bndvecInv[j+ki+1], bc.log_precision)
+                rotvec[j+1], bc.rpvecInv[j+ki+1], bc.log_precision)
         end
 
         for j in 1:k-1
@@ -420,10 +403,10 @@ function eval_exp(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, log_t::
         end
         tmp = conj(ck, cipher)
         cipher = sub(cipher, tmp)
-        tmp = mul_by_rns(cipher, bc.rp1, bc.bnd1, bc.log_precision)
+        tmp = mul_by_rns(cipher, bc.rp1, bc.log_precision)
         tmprot = circshift(bk.rot_keys[slots], tmp, -slots)
         tmp = add(tmp, tmprot)
-        cipher = mul_by_rns(cipher, bc.rp2, bc.bnd2, bc.log_precision)
+        cipher = mul_by_rns(cipher, bc.rp2, bc.log_precision)
         tmprot = circshift(bk.rot_keys[slots], cipher, -slots)
         cipher = add(cipher, tmprot)
         cipher = add(cipher, tmp)

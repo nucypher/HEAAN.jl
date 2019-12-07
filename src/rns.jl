@@ -21,6 +21,8 @@ struct RNSPlan
                 for j in 1:i]
             for i in 1:nprimes]
 
+        # `-1` is for cases when `pp` is a power of 2,
+        # which technically does not happen in our case, since all our moduli are prime.
         max_bin_moduli = [num_bits(pp) - 1 for pp in primes_prod]
 
         new(primes, primes_prod, primes_prod_half, reconstruct_coeffs, max_bin_moduli)
@@ -28,13 +30,18 @@ struct RNSPlan
 end
 
 
-function nprimes_for_modulus(plan::RNSPlan, log_modulus::Int)
+function min_nprimes(plan::RNSPlan, log_modulus::Int)
     idx = findfirst(x -> x >= log_modulus, plan.max_bin_moduli)
     if idx === nothing
         throw(DomainError(
             log_modulus, "Not enough primes in the plan to support this log2(modulus)"))
     end
     idx
+end
+
+
+function max_log_modulus(plan::RNSPlan, nprimes::Int)
+    plan.max_bin_moduli[nprimes]
 end
 
 
