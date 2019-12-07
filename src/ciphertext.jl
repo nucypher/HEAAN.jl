@@ -1,7 +1,7 @@
 struct Plaintext
     params :: Params
     polynomial :: Polynomial
-    # TODO: technically, log_cap is encoded in Polynomial eltypes already
+    # TODO: (issue #11) technically, log_cap is encoded in Polynomial eltypes already
     log_cap :: Int
     log_precision :: Int
     slots :: Int

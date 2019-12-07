@@ -13,8 +13,8 @@ struct EncryptionKey
         log_plen = params.log_polynomial_length
         plen = 2^log_plen
 
-        # TODO: C++ HEAAN has `log_lo_modulus + log_hi_modulus` here for the encryption key
-        # (that is, P * q_L in the notation of the paper)
+        # TODO: (issue #13) C++ HEAAN has `log_lo_modulus + log_hi_modulus` here
+        # for the encryption key (that is, P * q_L in the notation of the paper).
         # But in both HEAAN papers only `q_L` is used as the encryption key modulus.
         log_modulus = params.log_lo_modulus + params.log_hi_modulus
 

@@ -3,7 +3,7 @@ using HEAAN: float_to_integer, integer_to_float
 
 
 function shift_bigfloat(x::BigFloat, shift::Int)
-    # TODO: in NTL it's `MakeRR(x.x, x.e + shift)`,
+    # In NTL it's `MakeRR(x.x, x.e + shift)`,
     # but Julia does not give access to the significand.
     # Kind of hacky, but will work for now.
     xc = copy(x)

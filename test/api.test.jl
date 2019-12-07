@@ -304,7 +304,6 @@ end
     enc_key = EncryptionKey(rng, secret_key)
     mul_key = MultiplicationKey(rng, secret_key)
 
-    # TODO: if one uses 1.0 instead of 0.1, the error becomes huge. Why?
     mvec = rand_circle(rng, 0.1, n)
     minv = 1 ./ mvec
 
@@ -433,7 +432,7 @@ end
     n = 2^log_n
     log_precision = 20
     log_cap = 30
-    # TODO (see issue #1): why are we setting boot context precision as `log_cap + 4`?
+    # TODO: (issue #1) why are we setting boot context precision as `log_cap + 4`?
     bc_precision = log_cap + 4
 
     params = Params(log_polynomial_length=8, log_lo_modulus=600)

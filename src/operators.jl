@@ -24,7 +24,7 @@ end
 
 function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     @assert compatible(cipher1, cipher2, different_precision=true)
-    # TODO: check compatibility with the public key as well
+    # TODO: (issue #11) check compatibility with the public key as well
 
     params = cipher1.params
     plan = rns_plan(params)
@@ -155,6 +155,17 @@ function rescale_by(cipher::Ciphertext, dlog_cap::Int)
 end
 
 
+function div_by_po2(cipher::Ciphertext, bits::Int)
+    Ciphertext(
+        cipher.params,
+        cipher.ax >> bits,
+        cipher.bx >> bits,
+        cipher.log_cap - bits,
+        cipher.log_precision,
+        cipher.slots)
+end
+
+
 function add_const(cipher::Ciphertext, cnst::Float64)
     tp = BinModuloInt{BigInt, cipher.log_cap}
     cnst_big = float_to_integer(tp, cnst, cipher.log_precision)
@@ -231,7 +242,7 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     params = cipher.params
     plan = rns_plan(params)
 
-    # TODO: handle positive shifts too (mod N?)
+    # TODO: (issue #12) handle positive shifts too (mod N?)
     shift = -shift
 
     @assert rk.shift == shift
@@ -275,18 +286,6 @@ function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
         ax,
         bx,
         cipher.log_cap,
-        cipher.log_precision,
-        cipher.slots)
-end
-
-
-# TODO: I think the same operation is used somewhere else in the code, need to find it
-function div_by_po2(cipher::Ciphertext, bits::Int)
-    Ciphertext(
-        cipher.params,
-        cipher.ax >> bits,
-        cipher.bx >> bits,
-        cipher.log_cap - bits,
         cipher.log_precision,
         cipher.slots)
 end

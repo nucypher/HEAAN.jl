@@ -97,7 +97,6 @@ function integer_to_float(
     end
 
     s = is_negative(x, log_modulus)
-    # TODO: move to a function?
     if s
         x = modulus(T, log_modulus) - x
     end

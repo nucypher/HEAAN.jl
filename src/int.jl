@@ -93,7 +93,7 @@ struct BinModuloInt{T, Q} <: Number
     end
 
     function BinModuloInt(x::T, log_modulus::Int) where T
-        # TODO: check that log_modulus actually fits in T
+        # TODO: (issue #11) check that log_modulus actually fits in T
         new{T, log_modulus}(x)
     end
 end
@@ -166,6 +166,7 @@ Base.:(==)(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
 # TODO: check that it works correctly with all corner cases
 Base.:>>(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
     BinModuloInt{T, Q - shift}((x.value + (one(T) << (shift - 1))) >> shift)
+
 
 Base.:<<(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
     BinModuloInt{T, Q + shift}(x.value << shift)

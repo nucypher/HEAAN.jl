@@ -72,7 +72,7 @@ struct BootContext
                 pvec[i+1] = zero(tp)
             end
         else
-            # TODO: need to test this branch
+            # TODO: (issue #1) need to test this branch
             for pos in 0:slots-1
                 ki = pos ÷ k * k
 
@@ -234,7 +234,7 @@ function exp2pi(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int)
     cipher23 = mul(mk, cipher23, cipher2) # (p, q - l) * (2p - l, q - l) = (3p - l, q - l)
     cipher23 = rescale_by(cipher23, log_precision) # (3p - 2l, q - 2l)
 
-    # TODO (see issue #1): how justified is mod_down_to() here? In the original these two
+    # TODO: (issue #1) how justified is mod_down_to() here? In the original these two
     # ciphertexts are just added without regard to different log_caps, and the log_cap of
     # cipher23 is used for the result (which is smaller than that of cipher01).
     # So we have an inconsistent Ciphertext in the output, but somehow it works out...
@@ -272,9 +272,10 @@ end
 
 
 function eval_exp(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, log_t::Int, log_i::Int=4)
+
+    @assert 2^bc.log_slots == cipher.slots
     slots = cipher.slots
-    log_slots = trailing_zeros(slots) # TODO: assuming slots is a power of 2
-    @assert bc.log_slots == log_slots
+    log_slots = bc.log_slots
 
     mk = bk.mul_key
     ck = bk.conj_key
@@ -299,7 +300,7 @@ function eval_exp(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, log_t::
         tmprot = circshift(bk.rot_keys[slots], cipher, -slots)
         cipher = add(cipher, tmprot)
         cipher = add(cipher, tmp)
-    else # TODO (see issue #1): check this branch
+    else # TODO: (issue #1) check this branch
         tmp = conj(ck, cipher)
         c2 = sub(cipher, tmp)
         cipher = add(cipher, tmp)
@@ -340,7 +341,7 @@ function bootstrap(bk::BootstrapKey, cipher::Ciphertext, log_t::Int=4)
     log_plen = params.log_polynomial_length
     orig_log_precision = cipher.log_precision
 
-    # TODO: check that bk.bc.log_precision >= cipher.log_precision?
+    # TODO: (issue #11) check that bk.bc.log_precision >= cipher.log_precision?
     cipher = Ciphertext(
         params,
         mod_up_to(cipher.ax, params.log_lo_modulus),

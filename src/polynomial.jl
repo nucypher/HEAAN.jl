@@ -60,7 +60,7 @@ function _ntt_rns(plan::RNSPlan, x::Array{UInt64, 2}, inverse::Bool, negacyclic:
         r = x[:,j]
         m = plan.primes[j]
 
-        # TODO: keep residuals already casted to RRElem?
+        # TODO: (issue #9) keep residuals already casted to RRElem?
         tp = RRElem{UInt64, m}
         rr = DarkIntegers.ntt(tp.(r), inverse=inverse, negacyclic=negacyclic)
 
@@ -161,7 +161,7 @@ end
 
 
 function Base.:*(x::RNSPolynomialTransformed, y::RNSPolynomialTransformed)
-    # TODO: keep keys and such in M-representation, to speed up multiplication
+    # TODO: (issue #9) keep keys and such in M-representation, to speed up multiplication
     # (although make sure `+` is still processed correctly)
 
     @assert x.negacyclic == y.negacyclic
@@ -176,7 +176,7 @@ function Base.:*(x::RNSPolynomialTransformed, y::RNSPolynomialTransformed)
     np = min(size(x.residuals, 2), size(y.residuals, 2))
     res = Array{UInt64}(undef, size(x.residuals, 1), np)
     for j in 1:np
-        # TODO: use Barrett reduction, or Montgomery multiplication
+        # TODO: (issue #9) use Barrett reduction, or Montgomery multiplication
         res[:,j] = mulmod.(x.residuals[:,j], y.residuals[:,j], plan.primes[j])
     end
     RNSPolynomialTransformed(plan, res, new_log_modulus, new_log_range, x.negacyclic)
@@ -235,10 +235,6 @@ end
 
 
 function mod_up_to(x::Polynomial{BinModuloInt{T, Q}}, log_q::Int) where {T, Q}
-    # TODO: used only in bootstrap
-    # Two ways are possible: just increase the range,
-    # or keep negative numbers negative (that is x -> x - Q_old + Q_new).
-    # Not sure what is the right one.
     Polynomial(convert.(BinModuloInt{T, log_q}, x.coeffs), x.negacyclic)
 end
 

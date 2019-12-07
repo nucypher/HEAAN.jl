@@ -7,7 +7,7 @@ struct Params
     secret_key_length :: Int # in HEAAN: h
 
     function Params(; log_polynomial_length::Int=16, log_lo_modulus::Int=300)
-        # TODO: this all (including log_polynomial_length) should be derived
+        # TODO: (issue #14) this all (including log_polynomial_length) should be derived
         # from the security parameter `lambda`.
 
         # From Cheon et al.,
@@ -72,7 +72,6 @@ function rns_plan(params::Params)
 end
 
 
-# TODO: replace with a macro?
 const _embedding_plans = IdDict{Params, EmbeddingPlan}()
 
 
