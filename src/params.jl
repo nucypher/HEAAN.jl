@@ -18,7 +18,7 @@ struct Params
 
         gaussian_noise_stddev = 3.2
         secret_key_length = 64
-        log_hi_modulus = log_lo_modulus
+        log_hi_modulus = log_lo_modulus + 50 # To detect misplaced lo/hi modulus
 
         new(
             log_polynomial_length,

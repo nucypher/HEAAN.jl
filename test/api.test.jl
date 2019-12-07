@@ -314,7 +314,7 @@ end
 
     dvec = decrypt(secret_key, cipher_res)
 
-    test_approx(minv, dvec, 22)
+    test_approx(minv, dvec, 21)
 end
 
 
