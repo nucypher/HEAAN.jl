@@ -1,7 +1,7 @@
 struct BootContext
 
     rpvec :: Array{RNSPolynomialTransformed, 1}
-    rpvecInv :: Array{RNSPolynomialTransformed, 1}
+    rpvec_inv :: Array{RNSPolynomialTransformed, 1}
     rp1 :: RNSPolynomialTransformed
     rp2 :: RNSPolynomialTransformed
 
@@ -24,75 +24,48 @@ struct BootContext
         plen = 2^log_plen
 
         rpvec = Array{RNSPolynomialTransformed}(undef, slots)
-        rpvecInv = Array{RNSPolynomialTransformed}(undef, slots)
+        rpvec_inv = Array{RNSPolynomialTransformed}(undef, slots)
 
-        # TODO: is log_precision + 1 enough?
         tp = BinModuloInt{BigInt, log_precision + 1}
-        pvec = Array{tp}(undef, plen)
-        pvec .= zero(tp)
-        pvals = Array{Complex{Float64}}(undef, dslots)
 
         c = 0.25 / pi
 
         if log_slots < log_plen - 1
             dgap = gap >> 1
-            for ki in 0:k:slots-1
-                for pos in ki:ki+k-1
-                    for i in 0:slots-pos-1
-                        deg = ((2 * plen - e_plan.rotation_group[i + pos + 1]) * i * gap) % (2 * plen)
-                        pvals[i+1] = e_plan.root_powers[deg + 1]
-                        pvals[i + slots + 1] = pvals[i+1] * im
-                    end
-                    for i in slots-pos:slots-1
-                        deg = ((2 * plen - e_plan.rotation_group[i + pos - slots + 1]) * i * gap) % (2 * plen)
-                        pvals[i + 1] = e_plan.root_powers[deg + 1]
-                        pvals[i + slots + 1] = pvals[i + 1] * im
-                    end
-                    pvals = circshift(pvals, ki)
-                    pvals = unembed(e_plan, pvals)
-                    for i in 0:dslots-1
-                        jdx = plen ÷ 2 + i * dgap
-                        idx = i * dgap
-                        pvec[idx + 1] = float_to_integer(tp, real(pvals[i + 1]), log_precision)
-                        pvec[jdx + 1] = float_to_integer(tp, imag(pvals[i + 1]), log_precision)
-                    end
-                    rpvec[pos + 1] = to_rns_transformed(
-                        r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
-                    for i in 0:plen-1
-                        pvec[i + 1] = zero(tp)
-                    end
-                end
+            for pos in 0:slots-1
+                ki = pos ÷ k * k
+                i = collect(0:slots-1)
+                deg = mod.(.-(e_plan.rotation_group[(i .+ pos) .% slots .+ 1]) .* i .* gap, 2 * plen)
+                pvals = vcat(e_plan.root_powers[deg .+ 1], e_plan.root_powers[deg .+ 1] .* im)
+                pvals = circshift(pvals, ki)
+                pvals = unembed(e_plan, pvals)
+                pvals_real = vcat(real.(pvals), imag.(pvals))
+
+                pvec = zeros(tp, plen)
+                pvec[1:dgap:end] = float_to_integer.(tp, pvals_real, log_precision)
+
+                rpvec[pos + 1] = to_rns_transformed(
+                    r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
             end
 
-            for i in 0:slots-1
-                pvals[i + 1] = 0.0
-                pvals[i + slots + 1] = -c * im
-            end
+            pvals = vcat([0.0 for i in 1:slots], [-c*im for i in 1:slots])
             pvals = unembed(e_plan, pvals)
-            for i in 0:dslots-1
-                idx = i * dgap
-                jdx = plen ÷ 2 + i * dgap
-                pvec[idx + 1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
-                pvec[jdx + 1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
-            end
+            pvals_real = vcat(real.(pvals), imag.(pvals))
+
+            pvec = zeros(tp, plen)
+            pvec[1:dgap:end] = float_to_integer.(tp, pvals_real, log_precision)
+
             rp1 = to_rns_transformed(
                 r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
-            for i in 0:plen-1
-                pvec[i+1] = zero(tp)
-            end
 
-            for i in 0:slots-1
-                pvals[i + 1] = c
-                pvals[i + slots + 1] = 0
-            end
 
+            pvals = vcat([complex(c) for i in 1:slots], [0.0 for i in 1:slots])
             pvals = unembed(e_plan, pvals)
-            for i in 0:dslots-1
-                idx = i * dgap
-                jdx = plen ÷ 2 + i * dgap
-                pvec[idx+1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
-                pvec[jdx+1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
-            end
+            pvals_real = vcat(real.(pvals), imag.(pvals))
+
+            pvec = zeros(tp, plen)
+            pvec[1:dgap:end] = float_to_integer.(tp, pvals_real, log_precision)
+
             rp2 = to_rns_transformed(
                 r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
             for i in 0:plen-1
@@ -100,70 +73,49 @@ struct BootContext
             end
         else
             # TODO: need to test this branch
-            for ki in 0:k:slots-1
-                for pos in ki:ki+k-1
-                    for i in 0:slots-pos-1
-                        deg = ((plen * 2 - e_plan.rotation_group[i + pos + 1]) * i * gap) % (plen * 2)
-                        pvals[i+1] = e_plan.root_powers[deg+1]
-                    end
-                    for i in slots-pos:slots-1
-                        deg = ((plen * 2 - e_plan.rotation_group[i + pos - slots + 1]) * i * gap) % (plen * 2)
-                        pvals[i+1] = e_plan.root_powers[deg]
-                    end
-                    # TODO: check that this is equivalent to rightRotateAndEqual(pvals, slots, ki)
-                    # TODO: in the original it was `slots`, but length of `pvals` is `dslots` - bug?
-                    pvals = vcat(circshift(pvals[1:slots], ki), pvals[slots+1:end])
-                    pvals = vcat(unembed(e_plan, pvals[1:slots]), pvals[slots+1:end])
-                    for i in 0:slots-1
-                        idx = i * gap
-                        jdx = plen ÷ 2 + i * gap
-                        pvec[idx+1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
-                        pvec[jdx+1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
-                    end
-                    rpvec[pos+1] = to_rns_transformed(
-                        r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
-                    for i in 0:plen-1
-                        pvec[i+1] = zero(tp)
-                    end
-                end
+            for pos in 0:slots-1
+                ki = pos ÷ k * k
+
+                i = collect(0:slots-1)
+                deg = mod.(.-(e_plan.rotation_group[(i .+ pos) .% slots .+ 1]) .* i .* gap, plen * 2)
+                pvals = e_plan.root_powers[deg.+1]
+
+                pvals = circshift(pvals[1:slots], ki)
+                pvals = unembed(e_plan, pvals[1:slots])
+                pvals_real = vcat(real.(pvals), imag.(pvals))
+
+                pvec = zeros(tp, plen)
+                pvec[1:gap:end] = float_to_integer.(tp, pvals_real, log_precision)
+
+                rpvec[pos+1] = to_rns_transformed(
+                    r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
             end
 
             # These will be unused
-            rp1 = RNSPolynomialTransformed(r_plan, Array{UInt64}(undef, plen, 1))
-            rp2 = RNSPolynomialTransformed(r_plan, Array{UInt64}(undef, plen, 1))
+            rp1 = RNSPolynomialTransformed(r_plan, zeros(UInt64, plen, 1), 0, 0, false)
+            rp2 = RNSPolynomialTransformed(r_plan, zeros(UInt64, plen, 1), 0, 0, false)
         end
 
-        for ki in 0:k:slots-1
-            for pos in ki:ki+k-1
-                for i in 0:slots-pos-1
-                    deg = (e_plan.rotation_group[i+1] * (i + pos) * gap) % (plen * 2)
-                    pvals[i+1] = e_plan.root_powers[deg+1]
-                end
-                for i in slots-pos:slots-1
-                    deg = (e_plan.rotation_group[i+1] * (i + pos - slots) * gap) % (plen * 2)
-                    pvals[i+1] = e_plan.root_powers[deg+1]
-                end
-                # TODO: check that this is equivalent to rightRotateAndEqual(pvals, slots, ki)
-                # TODO: in the original it was `slots`, but length of `pvals` is `dslots` - bug?
-                pvals = vcat(circshift(pvals[1:slots], ki), pvals[slots+1:end])
-                pvals = vcat(unembed(e_plan, pvals[1:slots]), pvals[slots+1:end])
-                for i in 0:slots-1
-                    idx = i * gap
-                    jdx = plen ÷ 2 + i * gap
-                    pvec[idx+1] = float_to_integer(tp, real(pvals[i+1]), log_precision)
-                    pvec[jdx+1] = float_to_integer(tp, imag(pvals[i+1]), log_precision)
-                end
-                rpvecInv[pos+1] = to_rns_transformed(
-                    r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
-                for i in 0:plen-1
-                    pvec[i+1] = zero(tp)
-                end
-            end
+        for pos in 0:slots-1
+            ki = pos ÷ k * k
+
+            i = collect(0:slots-1)
+            deg = (e_plan.rotation_group[i.+1] .* ((i .+ pos) .% slots) .* gap) .% (plen * 2)
+            pvals = e_plan.root_powers[deg.+1]
+            pvals = circshift(pvals[1:slots], ki)
+            pvals = unembed(e_plan, pvals[1:slots])
+
+            pvals_real = vcat(real.(pvals), imag.(pvals))
+
+            pvec = zeros(tp, plen)
+            pvec[1:gap:end] = float_to_integer.(tp, pvals_real, log_precision)
+
+            rpvec_inv[pos+1] = to_rns_transformed(
+                r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
         end
 
-        new(rpvec, rpvecInv, rp1, rp2, log_precision, log_slots)
+        new(rpvec, rpvec_inv, rp1, rp2, log_precision, log_slots)
     end
-
 end
 
 
@@ -184,33 +136,17 @@ struct BootstrapKey
         params = secret_key.params
         log_plen = params.log_polynomial_length
 
-        # TODO: build a set of required shifts first, and then create the keys
-
-        rot_keys = Dict{Int, LeftRotationKey}()
-
-        for i in 0:log_plen-2
-            idx = 1 << i
-            if !haskey(rot_keys, idx)
-                rot_keys[idx] = LeftRotationKey(rng, secret_key, idx)
-            end
-        end
-
         loglh = log_slots ÷ 2
         k = 1 << loglh
         m = 1 << (log_slots - loglh)
 
-        for i in 1:k-1
-            if !haskey(rot_keys, i)
-                rot_keys[i] = LeftRotationKey(rng, secret_key, i)
-            end
-        end
+        shifts = Set(vcat(
+            1 .<< collect(0:log_plen-2),
+            collect(1:k-1),
+            collect(1:m-1) .* k
+            ))
 
-        for i in 1:m-1
-            idx = i * k
-            if !haskey(rot_keys, idx)
-                rot_keys[idx] = LeftRotationKey(rng, secret_key, idx)
-            end
-        end
+        rot_keys = Dict(shift => LeftRotationKey(rng, secret_key, shift) for shift in shifts)
 
         bc = BootContext(params, log_slots, log_precision)
 
@@ -224,7 +160,7 @@ function coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     @assert 2^bc.log_slots == cipher.slots
 
     slots = cipher.slots
-    log_slots = trailing_zeros(slots) # TODO: assuming slots is a power of 2
+    log_slots = bc.log_slots
     logk = log_slots ÷ 2
     k = 1 << logk
 
@@ -267,7 +203,7 @@ function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     @assert 2^bc.log_slots == cipher.slots
 
     slots = cipher.slots
-    log_slots = trailing_zeros(slots) # TODO: assuming slots is a power of 2
+    log_slots = bc.log_slots
     logk = log_slots ÷ 2
     k = 1 << logk
 
@@ -282,7 +218,7 @@ function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
 
     for j in 0:k-1
         tmpvec[j+1] = mul_by_rns(
-            rotvec[j+1], bc.rpvecInv[j+1], bc.log_precision)
+            rotvec[j+1], bc.rpvec_inv[j+1], bc.log_precision)
     end
 
     for j in 1:k-1
@@ -293,7 +229,7 @@ function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     for ki in k:k:slots-1
         for j in 0:k-1
             tmpvec[j+1] = mul_by_rns(
-                rotvec[j+1], bc.rpvecInv[j+ki+1], bc.log_precision)
+                rotvec[j+1], bc.rpvec_inv[j+ki+1], bc.log_precision)
         end
 
         for j in 1:k-1
