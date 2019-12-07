@@ -4,7 +4,6 @@ function rand_big_int(rng::AbstractRNG, log_modulus::Int, dims...)
 end
 
 
-# TODO: store just as {-1, 0, 1} and use multiplication by shifts
 function sample_ZO(rng::AbstractRNG, len::Int)
     # We only need to store -1, 0 and 1
     tp = BinModuloInt{BigInt, 2}
