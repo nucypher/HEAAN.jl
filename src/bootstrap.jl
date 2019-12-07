@@ -155,9 +155,17 @@ struct BootstrapKey
 end
 
 
-function coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
+left_rotate(bk::BootstrapKey, c::Ciphertext, shift::Int) = circshift(bk.rot_keys[shift], c, -shift)
+
+
+function _coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext, inverse::Bool)
+
+    # `inverse = false` - coeffToSlot in the paper
+    # `inverse = true`  - slotToCoeff in the paper
 
     @assert 2^bc.log_slots == cipher.slots
+
+    rpvec = inverse ? bc.rpvec_inv : bc.rpvec
 
     slots = cipher.slots
     log_slots = bc.log_slots
@@ -165,82 +173,38 @@ function coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
     k = 1 << logk
 
     rotvec = Array{Ciphertext}(undef, k)
-    rotvec[0+1] = cipher
-
-    for j in 0:k-2
-        rotvec[j+1+1] = circshift(bk.rot_keys[j+1], rotvec[0+1], -(j + 1))
+    rotvec[1] = cipher
+    for j in 2:k
+        rotvec[j] = left_rotate(bk, cipher, j-1)
     end
 
     tmpvec = Array{Ciphertext}(undef, k)
-
-    for j in 0:k-1
-        tmpvec[j+1] = mul_by_rns(rotvec[j+1], bc.rpvec[j+1], bc.log_precision)
+    for j in 1:k
+        tmpvec[j] = mul_by_rns(rotvec[j], rpvec[j], bc.log_precision)
+    end
+    for j in 2:k
+        tmpvec[1] = add(tmpvec[1], tmpvec[j])
     end
 
-    for j in 1:k-1
-        tmpvec[0+1] = add(tmpvec[0+1], tmpvec[j+1])
-    end
-
-    cipher = tmpvec[0+1]
+    cipher = tmpvec[1]
 
     for ki in k:k:slots-1
-        for j in 0:k-1
-            tmpvec[j+1] = mul_by_rns(
-                rotvec[j+1], bc.rpvec[j+ki+1], bc.log_precision)
+        for j in 1:k
+            tmpvec[j] = mul_by_rns(rotvec[j], rpvec[j+ki], bc.log_precision)
         end
-        for j in 1:k-1
-            tmpvec[0+1] = add(tmpvec[0+1], tmpvec[j+1])
+        for j in 2:k
+            tmpvec[1] = add(tmpvec[1], tmpvec[j])
         end
-        tmpvec[0+1] = circshift(bk.rot_keys[ki], tmpvec[0+1], -ki)
-        cipher = add(cipher, tmpvec[0+1])
+        tmpvec[1] = left_rotate(bk, tmpvec[1], ki)
+        cipher = add(cipher, tmpvec[1])
     end
+
     rescale_by(cipher, bc.log_precision)
 end
 
 
-function slot_to_coeff(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
-
-    @assert 2^bc.log_slots == cipher.slots
-
-    slots = cipher.slots
-    log_slots = bc.log_slots
-    logk = log_slots ÷ 2
-    k = 1 << logk
-
-    rotvec = Array{Ciphertext}(undef, k)
-    rotvec[0+1] = cipher
-
-    for j in 0:k-1-1
-        rotvec[j+1+1] = circshift(bk.rot_keys[j+1], rotvec[0+1], -(j + 1))
-    end
-
-    tmpvec = Array{Ciphertext}(undef, k)
-
-    for j in 0:k-1
-        tmpvec[j+1] = mul_by_rns(
-            rotvec[j+1], bc.rpvec_inv[j+1], bc.log_precision)
-    end
-
-    for j in 1:k-1
-        tmpvec[0+1] = add(tmpvec[0+1], tmpvec[j+1])
-    end
-    cipher = tmpvec[0+1]
-
-    for ki in k:k:slots-1
-        for j in 0:k-1
-            tmpvec[j+1] = mul_by_rns(
-                rotvec[j+1], bc.rpvec_inv[j+ki+1], bc.log_precision)
-        end
-
-        for j in 1:k-1
-            tmpvec[0+1] = add(tmpvec[0+1], tmpvec[j+1])
-        end
-
-        tmpvec[0+1] = circshift(bk.rot_keys[ki], tmpvec[0+1], -ki)
-        cipher = add(cipher, tmpvec[0+1])
-    end
-    rescale_by(cipher, bc.log_precision)
-end
+coeff_to_slot(bk, bc, cipher) = _coeff_to_slot(bk, bc, cipher, false)
+slot_to_coeff(bk, bc, cipher) = _coeff_to_slot(bk, bc, cipher, true)
 
 
 function exp2pi(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int)
