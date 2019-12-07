@@ -186,13 +186,11 @@ end
 poly_lm(x::Polynomial{BinModuloInt{T, Q}}) where {T, Q} = Q
 
 
-function mult(
-        x::Polynomial{BinModuloInt{T, Q}}, y::RNSPolynomialTransformed,
-        log_modulus::Int=0) where {T, Q}
+function mul_by_rns(x::Polynomial{BinModuloInt{T, Q}}, y::RNSPolynomialTransformed) where {T, Q}
     @assert x.negacyclic == y.negacyclic
     plan = y.plan
     x_rns = _ntt_forward(_to_rns(plan, x, y.log_range, x.negacyclic))
-    from_rns_transformed(x_rns * y, log_modulus == 0 ? Q : log_modulus)
+    from_rns_transformed(x_rns * y, Q)
 end
 
 

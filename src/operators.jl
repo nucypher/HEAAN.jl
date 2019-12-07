@@ -222,14 +222,7 @@ function mul_by_plaintext(cipher::Ciphertext, p::Plaintext)
     plan = rns_plan(params)
     rpoly = to_rns_transformed(plan, p.polynomial, cipher.log_cap)
 
-    # TODO: use mul_by_rns() here
-    Ciphertext(
-        cipher.params,
-        mult(cipher.ax, rpoly),
-        mult(cipher.bx, rpoly),
-        cipher.log_cap,
-        cipher.log_precision + p.log_precision,
-        cipher.slots)
+    mul_by_rns(cipher, rpoly, p.log_precision)
 end
 
 

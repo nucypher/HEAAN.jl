@@ -219,17 +219,6 @@ struct BootstrapKey
 end
 
 
-function mul_by_rns(cipher::Ciphertext, p::RNSPolynomialTransformed, log_precision::Int)
-    Ciphertext(
-        cipher.params,
-        mult(cipher.ax, p),
-        mult(cipher.bx, p),
-        cipher.log_cap,
-        cipher.log_precision + log_precision,
-        cipher.slots)
-end
-
-
 function coeff_to_slot(bk::BootstrapKey, bc::BootContext, cipher::Ciphertext)
 
     @assert 2^bc.log_slots == cipher.slots

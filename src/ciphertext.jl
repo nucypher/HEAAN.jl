@@ -71,14 +71,17 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
 
     vx = sample_ZO(rng, 2^params.log_polynomial_length)
 
+    plan = rns_plan(params)
+    rvx = to_rns_transformed(plan, vx, params.log_lo_modulus + params.log_hi_modulus)
+
     ax = (
         discrete_gaussian(rng, params.gaussian_noise_stddev, plen) +
-        mult(vx, key.key.rax, log_modulus))
+        from_rns_transformed(rvx * key.key.rax, log_modulus))
 
     bx = (
         discrete_gaussian(rng, params.gaussian_noise_stddev, plen) +
         plain.polynomial +
-        mult(vx, key.key.rbx, log_modulus))
+        from_rns_transformed(rvx * key.key.rbx, log_modulus))
 
     ax = ax >> params.log_hi_modulus
     bx = bx >> params.log_hi_modulus
@@ -131,4 +134,15 @@ end
 function decrypt(secret_key::SecretKey, cipher::Ciphertext)
     plain = decrypt_to_plaintext(secret_key, cipher)
     decode(plain)
+end
+
+
+function mul_by_rns(cipher::Ciphertext, p::RNSPolynomialTransformed, log_precision::Int)
+    Ciphertext(
+        cipher.params,
+        mul_by_rns(cipher.ax, p),
+        mul_by_rns(cipher.bx, p),
+        cipher.log_cap,
+        cipher.log_precision + log_precision,
+        cipher.slots)
 end
