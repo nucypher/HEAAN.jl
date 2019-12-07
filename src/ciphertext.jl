@@ -62,11 +62,6 @@ function encode(
 end
 
 
-function bit(x::BigInt, i::Int)
-    x & (one(BigInt) << i) != 0
-end
-
-
 function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
 
     params = plain.params
