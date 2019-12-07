@@ -243,12 +243,6 @@ function mod_up_to(x::Polynomial{BinModuloInt{T, Q}}, log_q::Int) where {T, Q}
 end
 
 
-# TODO: do we even need this as a separate function?
-function mul_by_monomial(x::Polynomial, pwr::Integer)
-    shift_polynomial(x, pwr)
-end
-
-
 # FIXME: these methods will not be necessary when Polynomial broadcasting
 # is implemented in DarkIntegers
 

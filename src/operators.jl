@@ -195,10 +195,11 @@ end
 
 function imul(cipher::Ciphertext)
     params = cipher.params
+    shift = 1 << (params.log_polynomial_length - 1)
     Ciphertext(
         params,
-        mul_by_monomial(cipher.ax, 2^(params.log_polynomial_length - 1)),
-        mul_by_monomial(cipher.bx, 2^(params.log_polynomial_length - 1)),
+        shift_polynomial(cipher.ax, shift),
+        shift_polynomial(cipher.bx, shift),
         cipher.log_cap,
         cipher.log_precision,
         cipher.slots)
