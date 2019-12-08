@@ -125,7 +125,7 @@ Base.one(::Type{BinModuloInt{T, Q}}) where {T, Q} = BinModuloInt{T, Q}(one(T))
 
 
 Base.convert(::Type{BinModuloInt{T, Q}}, x::Integer) where {T, Q} =
-    BinModuloInt{T, Q}(normalize(big(x), Q))
+    BinModuloInt{T, Q}(normalize(convert(T, x), Q))
 
 
 function mod_down_to(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
