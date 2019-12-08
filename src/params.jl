@@ -32,29 +32,39 @@ end
 
 
 function _rns_plan(params::Params)
-    pbnd = 59 # TODO: move to Params?
-    # TODO: why `2 * (params.log_lo_modulus + params.log_hi_modulus)`?
-    # do we really use this range anywhere?
-    nprimes = (
-        2 + params.log_polynomial_length +
-        2 * (params.log_lo_modulus + params.log_hi_modulus) + pbnd - 1) ÷ pbnd
+    # Maximum range for RNS numbers
+    # (lo_modulus + hi_modulus) is the maximum key size, which will be multiplied by
+    # lo_modulus-sized polynomial, which will require an additional log_polynomial_length range.
+    # There may be +1 or +2 necessary, but in any case it will be caught by assertions in rns.jl.
+    log_max_range = (
+        params.log_polynomial_length +
+        params.log_lo_modulus + params.log_hi_modulus +
+        params.log_lo_modulus)
+    max_range = one(BigInt) << log_max_range
 
-    pVec = Array{UInt64}(undef, nprimes)
+    primes_prod = one(BigInt)
+    primes = UInt64[]
     N = 2^params.log_polynomial_length
 
-    # TODO: precompute the primes? At least for the case of the default N
-    primetest = (one(UInt64) << pbnd) + one(UInt64)
-    for i in 0:nprimes-1
-        while true
-            primetest += N * 2
-            if isprime(primetest)
-                pVec[i+1] = primetest
+    # In practice, the primes can be precomputed,
+    # but for our parameters it takes very little time (and the plan is cached anyway),
+    # so for simplicity we don't bother.
+    #
+    # We're only using primes with 62 bits or less, to make addmod() a little faster
+    # (since there's no UInt64 overflow). Otherwise we could start from 2^64-1.
+    primetest = (one(UInt64) << 63) + one(UInt64)
+    while true
+        primetest -= N * 2 # need (prime - 1) to be a multiple of 2N for NTT to work
+        if isprime(primetest)
+            push!(primes, primetest)
+            primes_prod *= big(primetest)
+            if primes_prod > max_range
                 break
             end
         end
     end
 
-    RNSPlan(pVec)
+    RNSPlan(primes)
 end
 
 
