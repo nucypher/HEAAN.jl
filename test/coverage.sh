@@ -2,7 +2,7 @@
 set -e
 rm -rf htmlcov
 mkdir htmlcov
-julia --inline=no --code-coverage=user runtests.jl "$@"
+julia --project=../../HEAAN --inline=no --code-coverage=user runtests.jl "$@"
 # Not using direct output to .info because it adds standard library files coverage
 julia coverage.jl
 # genhtml is a part of `lcov` utility package
