@@ -160,9 +160,51 @@ Base.:(==)(x::BinModuloInt{T, Q}, y::BinModuloInt{T, Q}) where {T, Q} =
     x.value == y.value
 
 
-# TODO: check that it works correctly with all corner cases
-Base.:>>(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
-    BinModuloInt{T, Q - shift}((x.value + (one(T) << (shift - 1))) >> shift)
+function Base.:>>(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q}
+    BinModuloInt{T, Q - shift}(x.value >> shift)
+end
+
+
+#=
+What C++ HEAAN is doing is essentially
+
+    right_shift_rounded(x, shift) = (signbit(x) ? -1 : 1) * (abs(x + 2^(shift-1)) >> shift)
+
+This doesn't quite correspond to `round(x / 2^shift)`, which is the intention,
+and reduces precision. The Julia version of that would be
+
+    half_shift = BinModuloInt{T, Q}(one(T) << (shift - 1))
+    new_x = x + half_shift
+    (signbit(x) && signbit(new_x)) ? -((-new_x) >> shift) : new_x >> shift
+
+Instead, we're implementing an algorithm that does correspond to `round(x / 2^shift)`
+(except for when the result is `-2^(Q-shift-1)`).
+=#
+function right_shift_rounded(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q}
+
+    s = signbit(x)
+    x = s ? -x : x
+    v = x.value + modulus(T, shift - 1)
+    tie = iszero(v & all_bits_mask(T, shift)) # that is, whether x/2^shift = ###.5
+    v >>= shift
+
+    # Using the "Round half to even" tie-breaking rule, the same as Julia uses by default.
+    if tie && isodd(v)
+        v -= one(T)
+    end
+
+    # Our integer range is `(-2^(q-1), 2^(q-1)]`, where `q = Q - shift`.
+    # So we have to deal with the value `-2^(q-1)` somehow.
+    # One way is to wrap it around to `2^(q-1)`, but that will mean that we get a positive
+    # number by rounding a negative number, which can lead to big errors.
+    # Instead, we just add 1, which leads to very small and rare errors.
+    if s && v == one(T) << (Q - shift - 1)
+        v -= one(T)
+    end
+
+    v = HEAAN.BinModuloInt{T, Q - shift}(v)
+    s ? -v : v
+end
 
 
 Base.:<<(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =

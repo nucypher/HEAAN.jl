@@ -251,8 +251,9 @@ Base.:-(x::AbstractArray, y::Polynomial{BinModuloInt{T, Q}}) where {T, Q} =
     Polynomial(convert.(BinModuloInt{T, Q}, x), y.negacyclic) - y
 
 
-Base.:>>(x::Polynomial{BinModuloInt{T, Q}}, shift::Integer) where {T, Q} =
-    Polynomial(x.coeffs .>> shift, x.negacyclic)
+right_shift_rounded(x::Polynomial{BinModuloInt{T, Q}}, shift::Integer) where {T, Q} =
+    Polynomial(right_shift_rounded.(x.coeffs, shift), x.negacyclic)
+
 
 Base.:<<(x::Polynomial{BinModuloInt{T, Q}}, shift::Integer) where {T, Q} =
     Polynomial(x.coeffs .<< shift, x.negacyclic)
