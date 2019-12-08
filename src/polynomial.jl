@@ -194,9 +194,6 @@ function mul_by_rns(x::Polynomial{BinModuloInt{T, Q}}, y::RNSPolynomialTransform
 end
 
 
-# TODO: seems to correspond to Rotate() in the paper?
-# Or does it refer to `circshift` itself?
-# "For an input encryption of m(Y), return an encryption of m(Y^(5^k)) in the same level"
 function left_rotate(x::Polynomial, r::Integer)
     res = Polynomial(similar(x.coeffs), x.negacyclic)
     n = length(x.coeffs)
