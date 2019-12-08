@@ -128,14 +128,11 @@ Base.convert(::Type{BinModuloInt{T, Q}}, x::Integer) where {T, Q} =
     BinModuloInt{T, Q}(normalize(big(x), Q))
 
 
-# TODO: check that it works correctly with negative numbers
-# TODO: actually, `trunc` is not the right function to use here - for numbers is assumes that
-# the number is in the final range already.
-# Need our own function.
-function Base.trunc(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
+function mod_down_to(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
     @assert Q1 <= Q2
     BinModuloInt{T, Q1}(x.value & all_bits_mask(BinModuloInt{T, Q1}))
 end
+
 
 function Base.convert(::Type{BinModuloInt{T, Q1}}, x::BinModuloInt{T, Q2}) where {T, Q1, Q2}
     @assert Q1 >= Q2

@@ -225,12 +225,12 @@ end
 
 
 function mod_down_by(x::Polynomial{BinModuloInt{T, Q}}, dq::Int) where {T, Q}
-    Polynomial(trunc.(BinModuloInt{T, Q - dq}, x.coeffs), x.negacyclic)
+    Polynomial(mod_down_to.(BinModuloInt{T, Q - dq}, x.coeffs), x.negacyclic)
 end
 
 
 function mod_down_to(x::Polynomial{BinModuloInt{T, Q}}, log_q::Int) where {T, Q}
-    Polynomial(trunc.(BinModuloInt{T, log_q}, x.coeffs), x.negacyclic)
+    Polynomial(mod_down_to.(BinModuloInt{T, log_q}, x.coeffs), x.negacyclic)
 end
 
 
