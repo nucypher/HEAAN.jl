@@ -117,15 +117,8 @@ function integer_to_float(
     # Getting rid of the low bit and the high bit
     s_bits = (temp >> 1) & Base.significand_mask(V)
 
-    # FIXME: For some reason the rounding in the reference function
-    # (Float64(BigFloat(x) / 2^shift)) works in a slightly strange way.
-    # For remainders strictly less or greater than `b.1000...000` it works as expected:
-    # rounds down or up, respectively.
-    # But for the `remainder == b.1000...000`, it rounds up if the last bit of the mantissa is 1
-    # and down otherwise.
-    #
-    # So in order to preserve compatibility we have to check for that.
-    # Can probably be removed later.
+    # The reference function (Float64(BigFloat(x) / 2^shift)) rounds to the closest even
+    # in the case of a tie (that is, `remainder == b.1000...000`), so that's what we're doing.
 
     first_remainder_bit = isodd(temp)
     last_mantissa_bit = isodd(s_bits)
