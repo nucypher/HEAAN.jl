@@ -22,5 +22,5 @@ end
 
 
 function discrete_gaussian(rng::AbstractRNG, stddev::Float64, dims...)
-    round.(Int, randn(rng, dims...) .* stddev)
+    Polynomial(round.(Int, randn(rng, dims...) .* stddev), negacyclic_modulus)
 end

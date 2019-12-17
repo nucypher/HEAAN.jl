@@ -85,7 +85,7 @@ function num_bits(x::BigInt)
 end
 
 
-struct BinModuloInt{T, Q} <: Number
+struct BinModuloInt{T, Q} <: Unsigned
     value :: T
 
     function BinModuloInt{T, Q}(x::T) where {T, Q}
@@ -215,7 +215,7 @@ function right_shift_rounded(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q}
 end
 
 
-Base.:<<(x::BinModuloInt{T, Q}, shift::Integer) where {T, Q} =
+Base.:<<(x::BinModuloInt{T, Q}, shift::Int) where {T, Q} =
     BinModuloInt{T, Q + shift}(x.value << shift)
 
 

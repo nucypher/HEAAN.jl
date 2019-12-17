@@ -83,8 +83,8 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
         plain.polynomial +
         from_rns_transformed(rvx * key.key.rbx, log_modulus))
 
-    ax = right_shift_rounded.(ax, params.log_hi_modulus)
-    bx = right_shift_rounded.(bx, params.log_hi_modulus)
+    ax = broadcast_into_polynomial(right_shift_rounded, ax, params.log_hi_modulus)
+    bx = broadcast_into_polynomial(right_shift_rounded, bx, params.log_hi_modulus)
 
     Ciphertext(params, ax, bx,
         plain.log_cap - params.log_hi_modulus,

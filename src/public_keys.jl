@@ -43,7 +43,8 @@ struct MultiplicationKey
 
         ax = rand_big_int(rng, log_modulus, plen)
 
-        sxsx = square(secret_key, params.log_lo_modulus) .<< params.log_hi_modulus
+        sxsx = broadcast_into_polynomial(
+            <<, square(secret_key, params.log_lo_modulus), params.log_hi_modulus)
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax + sxsx
 
         plan = rns_plan(params)
@@ -71,9 +72,10 @@ struct LeftRotationKey
         ax = rand_big_int(rng, log_modulus, plen)
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
-        spow = (
-            left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift)
-                .<< params.log_hi_modulus)
+        spow = broadcast_into_polynomial(
+            <<,
+            left_rotate(as_polynomial(secret_key, params.log_lo_modulus), shift),
+            params.log_hi_modulus)
         bx = bx + spow
 
         plan = rns_plan(params)
@@ -100,9 +102,10 @@ struct ConjugationKey
         ax = rand_big_int(rng, log_modulus, plen)
         bx = discrete_gaussian(rng, params.gaussian_noise_stddev, plen) - secret_key * ax
 
-        sxconj = (
-            conjugate(as_polynomial(secret_key, params.log_lo_modulus))
-            .<< params.log_hi_modulus)
+        sxconj = broadcast_into_polynomial(
+            <<,
+            conjugate(as_polynomial(secret_key, params.log_lo_modulus)),
+            params.log_hi_modulus)
 
         bx = bx + sxconj
 
