@@ -99,6 +99,14 @@ struct BinModuloInt{T, Q} <: Number
 end
 
 
+@inline Base.promote_type(::Type{BinModuloInt{T, Q}}, ::Type{BinModuloInt{T, Q}}) where {T, Q} =
+    BinModuloInt{T, Q}
+@inline Base.promote_type(::Type{BinModuloInt{T, Q}}, ::Type{<:Integer}) where {T, Q} =
+    BinModuloInt{T, Q}
+@inline Base.promote_type(::Type{<:Integer}, ::Type{BinModuloInt{T, Q}}) where {T, Q} =
+    BinModuloInt{T, Q}
+
+
 function num_bits(x::BinModuloInt)
     if signbit(x)
         x = -x

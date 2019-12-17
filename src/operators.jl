@@ -60,9 +60,9 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     =#
 
     log_modulus = cipher1.log_cap + params.log_hi_modulus
-    ax = right_shift_rounded(
+    ax = right_shift_rounded.(
         from_rns_transformed(raa * key.rax, log_modulus), params.log_hi_modulus)
-    bx = right_shift_rounded(
+    bx = right_shift_rounded.(
         from_rns_transformed(raa * key.rbx, log_modulus), params.log_hi_modulus)
 
     ax = ax + axbx - bxbx - axax
@@ -97,9 +97,9 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
     raa = to_rns_transformed(plan, axax, params.log_lo_modulus + params.log_hi_modulus)
 
     log_modulus = cipher.log_cap + params.log_hi_modulus
-    ax = right_shift_rounded(
+    ax = right_shift_rounded.(
         from_rns_transformed(raa * key.rax, log_modulus), params.log_hi_modulus)
-    bx = right_shift_rounded(
+    bx = right_shift_rounded.(
         from_rns_transformed(raa * key.rbx, log_modulus), params.log_hi_modulus)
 
     ax = ax + axbx
@@ -151,8 +151,8 @@ end
 function rescale_by(cipher::Ciphertext, dlog_cap::Int)
     Ciphertext(
         cipher.params,
-        right_shift_rounded(cipher.ax, dlog_cap),
-        right_shift_rounded(cipher.bx, dlog_cap),
+        right_shift_rounded.(cipher.ax, dlog_cap),
+        right_shift_rounded.(cipher.bx, dlog_cap),
         cipher.log_cap - dlog_cap,
         cipher.log_precision - dlog_cap,
         cipher.slots)
@@ -162,8 +162,8 @@ end
 function div_by_po2(cipher::Ciphertext, bits::Int)
     Ciphertext(
         cipher.params,
-        right_shift_rounded(cipher.ax, bits),
-        right_shift_rounded(cipher.bx, bits),
+        right_shift_rounded.(cipher.ax, bits),
+        right_shift_rounded.(cipher.bx, bits),
         cipher.log_cap - bits,
         cipher.log_precision,
         cipher.slots)
@@ -193,8 +193,8 @@ function mul_by_const(cipher::Ciphertext, cnst::Float64, log_precision::Int)
     cnst_big = float_to_integer(tp, cnst, log_precision)
     Ciphertext(
         cipher.params,
-        cipher.ax * cnst_big,
-        cipher.bx * cnst_big,
+        cipher.ax .* cnst_big,
+        cipher.bx .* cnst_big,
         cipher.log_cap,
         cipher.log_precision + log_precision,
         cipher.slots)
@@ -213,8 +213,8 @@ function imul(cipher::Ciphertext)
     shift = 1 << (params.log_polynomial_length - 1)
     Ciphertext(
         params,
-        shift_polynomial(cipher.ax, shift),
-        shift_polynomial(cipher.bx, shift),
+        mul_by_monomial(cipher.ax, shift),
+        mul_by_monomial(cipher.bx, shift),
         cipher.log_cap,
         cipher.log_precision,
         cipher.slots)
@@ -257,9 +257,9 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     rarot = to_rns_transformed(plan, axrot, params.log_lo_modulus + params.log_hi_modulus)
 
     log_modulus = cipher.log_cap + params.log_hi_modulus
-    ax = right_shift_rounded(
+    ax = right_shift_rounded.(
         from_rns_transformed(rarot * rk.key.rax, log_modulus), params.log_hi_modulus)
-    bx = right_shift_rounded(
+    bx = right_shift_rounded.(
         from_rns_transformed(rarot * rk.key.rbx, log_modulus), params.log_hi_modulus)
     bx = bx + bxrot
 
@@ -283,9 +283,9 @@ function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
     raconj = to_rns_transformed(plan, axconj, params.log_lo_modulus + params.log_hi_modulus)
 
     log_modulus = cipher.log_cap + params.log_hi_modulus
-    ax = right_shift_rounded(
+    ax = right_shift_rounded.(
         from_rns_transformed(raconj * ck.key.rax, log_modulus), params.log_hi_modulus)
-    bx = right_shift_rounded(
+    bx = right_shift_rounded.(
         from_rns_transformed(raconj * ck.key.rbx, log_modulus), params.log_hi_modulus)
     bx = bx + bxconj
 

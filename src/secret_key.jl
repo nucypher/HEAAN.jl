@@ -30,16 +30,16 @@ function Base.:*(secret_key::SecretKey, pa::Polynomial{BinModuloInt{T, Q}}) wher
     sk_list = secret_key.nonzero_entries
 
     power, minus_one = sk_list[1]
-    res = shift_polynomial(pa, power)
+    res = mul_by_monomial(pa, power)
     if minus_one
         res = -res
     end
 
     for (power, minus_one) in sk_list[2:end]
         if minus_one
-            res -= shift_polynomial(pa, power)
+            res -= mul_by_monomial(pa, power)
         else
-            res += shift_polynomial(pa, power)
+            res += mul_by_monomial(pa, power)
         end
     end
 
@@ -50,7 +50,7 @@ end
 function as_polynomial(secret_key::SecretKey, log_modulus::Int)
     params = secret_key.params
     tp = BinModuloInt{BigInt, log_modulus}
-    sk_poly = Polynomial(zeros(tp, 2^params.log_polynomial_length), true)
+    sk_poly = Polynomial(zeros(tp, 2^params.log_polynomial_length), negacyclic_modulus)
     for (power, minus_one) in secret_key.nonzero_entries
         sk_poly.coeffs[power+1] = minus_one ? -one(tp) : one(tp)
     end

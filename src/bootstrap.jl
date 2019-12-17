@@ -45,7 +45,8 @@ struct BootContext
                 pvec[1:dgap:end] = float_to_integer.(tp, pvals_real, log_precision)
 
                 rpvec[pos + 1] = to_rns_transformed(
-                    r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
+                    r_plan, Polynomial(pvec, negacyclic_modulus),
+                    params.log_lo_modulus + 2 * log_plen)
             end
 
             pvals = vcat([0.0 for i in 1:slots], [-c*im for i in 1:slots])
@@ -56,7 +57,8 @@ struct BootContext
             pvec[1:dgap:end] = float_to_integer.(tp, pvals_real, log_precision)
 
             rp1 = to_rns_transformed(
-                r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
+                r_plan, Polynomial(pvec, negacyclic_modulus),
+                params.log_lo_modulus + 2 * log_plen)
 
 
             pvals = vcat([complex(c) for i in 1:slots], [0.0 for i in 1:slots])
@@ -67,7 +69,8 @@ struct BootContext
             pvec[1:dgap:end] = float_to_integer.(tp, pvals_real, log_precision)
 
             rp2 = to_rns_transformed(
-                r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
+                r_plan, Polynomial(pvec, negacyclic_modulus),
+                params.log_lo_modulus + 2 * log_plen)
             for i in 0:plen-1
                 pvec[i+1] = zero(tp)
             end
@@ -88,7 +91,8 @@ struct BootContext
                 pvec[1:gap:end] = float_to_integer.(tp, pvals_real, log_precision)
 
                 rpvec[pos+1] = to_rns_transformed(
-                    r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
+                    r_plan, Polynomial(pvec, negacyclic_modulus),
+                    params.log_lo_modulus + 2 * log_plen)
             end
 
             # These will be unused
@@ -111,7 +115,8 @@ struct BootContext
             pvec[1:gap:end] = float_to_integer.(tp, pvals_real, log_precision)
 
             rpvec_inv[pos+1] = to_rns_transformed(
-                r_plan, Polynomial(pvec, true), params.log_lo_modulus + 2 * log_plen)
+                r_plan, Polynomial(pvec, negacyclic_modulus),
+                params.log_lo_modulus + 2 * log_plen)
         end
 
         new(rpvec, rpvec_inv, rp1, rp2, log_precision, log_slots)

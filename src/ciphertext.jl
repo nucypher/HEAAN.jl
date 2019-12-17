@@ -48,7 +48,7 @@ function encode(
     mx = zeros(tp, gap, slots, 2)
     mx[1,:,1] = float_to_integer.(tp, real.(uvals), log_precision)
     mx[1,:,2] = float_to_integer.(tp, imag.(uvals), log_precision)
-    poly = Polynomial(mx[:], true)
+    poly = Polynomial(mx[:], negacyclic_modulus)
 
     if minimize_range
         nb = maximum(num_bits.(mx))
@@ -83,8 +83,8 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
         plain.polynomial +
         from_rns_transformed(rvx * key.key.rbx, log_modulus))
 
-    ax = right_shift_rounded(ax, params.log_hi_modulus)
-    bx = right_shift_rounded(bx, params.log_hi_modulus)
+    ax = right_shift_rounded.(ax, params.log_hi_modulus)
+    bx = right_shift_rounded.(bx, params.log_hi_modulus)
 
     Ciphertext(params, ax, bx,
         plain.log_cap - params.log_hi_modulus,
