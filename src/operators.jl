@@ -197,8 +197,8 @@ function mul_by_const(cipher::Ciphertext, cnst::Float64, log_precision::Int)
     cnst_big = float_to_integer(tp, cnst, log_precision)
     Ciphertext(
         cipher.params,
-        cipher.ax .* cnst_big,
-        cipher.bx .* cnst_big,
+        cipher.ax * cnst_big,
+        cipher.bx * cnst_big,
         cipher.log_cap,
         cipher.log_precision + log_precision,
         cipher.slots)
