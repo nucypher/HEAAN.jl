@@ -71,7 +71,7 @@ function test()
     c1 = encrypt(rng, enc_key, v1, log_precision, log_cap)
     c2 = encrypt(rng, enc_key, v2, log_precision, log_cap)
 
-    println("Before: precision=$(c1.log_precision), cap=$(c2.log_cap)")
+    println("Before: precision=$(c1.log_precision), cap=$(c1.log_cap)")
 
     # Intermediate results
     t1 = sigmoid(mul_key, c1, log_precision, 7)
