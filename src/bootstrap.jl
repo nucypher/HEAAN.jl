@@ -124,6 +124,17 @@ struct BootContext
 end
 
 
+"""
+    BootstrapKey(
+        rng::AbstractRNG, secret_key::SecretKey,
+        enc_key::EncryptionKey, mul_key::MultiplicationKey, conj_key::ConjugationKey,
+        log_slots::Int, log_precision::Int)
+
+A public key used for bootstrapping.
+Can only be applied to encrypted vector of size `2^log_slots`.
+Needs the [`SecretKey`](@ref), an [`EncryptionKey`](@ref),
+a [`MultiplicationKey`](@ref) and a [`ConjugationKey`](@ref).
+"""
 struct BootstrapKey
 
     enc_key :: EncryptionKey
@@ -338,6 +349,13 @@ The theory behind this is explained in
 "Improved Bootstrapping for Approximate Homomorphic Encryption", Cheon et al (2018),
 Section 2.2.
 =#
+
+"""
+    bootstrap(bk::BootstrapKey, cipher::Ciphertext, log_t::Int=4)
+
+Bootstrap a ciphertext, increasing the difference between its `log_cap` and `log_precision`.
+Needs a [`BootstrapKey`](@ref) object.
+"""
 function bootstrap(bk::BootstrapKey, cipher::Ciphertext, log_t::Int=4)
 
     @assert 2^bk.log_slots == cipher.slots

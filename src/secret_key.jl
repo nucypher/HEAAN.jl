@@ -1,3 +1,9 @@
+"""
+    SecretKey(rng::AbstractRNG, params::Params)
+
+Secret key, used for decryption.
+Takes a [`Params`](@ref) object.
+"""
 struct SecretKey
 
     params :: Params

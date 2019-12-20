@@ -4,6 +4,12 @@ struct PublicKeyRNS
 end
 
 
+"""
+    EncryptionKey(rng::AbstractRNG, secret_key::SecretKey)
+
+A public key used for encryption.
+Needs a [`SecretKey`](@ref) object.
+"""
 struct EncryptionKey
     params :: Params
     key :: PublicKeyRNS
@@ -30,6 +36,12 @@ struct EncryptionKey
 end
 
 
+"""
+    MultiplicationKey(rng::AbstractRNG, secret_key::SecretKey)
+
+A public key used for multiplication of two ciphertexts.
+Needs a [`SecretKey`](@ref) object.
+"""
 struct MultiplicationKey
     params :: Params
     key :: PublicKeyRNS
@@ -56,6 +68,13 @@ struct MultiplicationKey
 end
 
 
+"""
+    LeftRotationKey(rng::AbstractRNG, secret_key::SecretKey, shift::Int)
+
+A public key used for left rotation (`circshift()` with a negative argument) of a ciphertext.
+Needs a [`SecretKey`](@ref) object and the absolute value of the shift
+(a separate key is needed for each value of the shift).
+"""
 struct LeftRotationKey
     params :: Params
     key :: PublicKeyRNS
@@ -87,6 +106,13 @@ struct LeftRotationKey
 end
 
 
+
+"""
+    LeftRotationKey(rng::AbstractRNG, secret_key::SecretKey)
+
+A public key used for conjugation of a ciphertext.
+Needs a [`SecretKey`](@ref) object.
+"""
 struct ConjugationKey
     params :: Params
     key :: PublicKeyRNS

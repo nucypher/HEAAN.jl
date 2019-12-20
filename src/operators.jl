@@ -1,3 +1,9 @@
+"""
+    add(cipher1::Ciphertext, cipher2::Ciphertext)
+
+Elementwise addition of encrypted vectors.
+Both ciphertexts must have the same `log_cap` and `log_precision`.
+"""
 function add(cipher1::Ciphertext, cipher2::Ciphertext)
     @assert compatible(cipher1, cipher2)
     Ciphertext(
@@ -10,6 +16,12 @@ function add(cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
+"""
+    sub(cipher1::Ciphertext, cipher2::Ciphertext)
+
+Elementwise subtraction of encrypted vectors.
+Both ciphertexts must have the same `log_cap` and `log_precision`.
+"""
 function sub(cipher1::Ciphertext, cipher2::Ciphertext)
     @assert compatible(cipher1, cipher2)
     Ciphertext(
@@ -22,6 +34,14 @@ function sub(cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
+"""
+    mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
+
+Elementwise multiplication of encrypted vectors.
+Needs a [`MultiplicationKey`](@ref).
+Both ciphertexts must have the same `log_cap` (but can have different `log_precision`);
+`log_precision` of the result is the sum of `log_precision` of both ciphertexts.
+"""
 function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
     @assert compatible(cipher1, cipher2, different_precision=true)
     # TODO: (issue #11) check compatibility with the public key as well
@@ -80,6 +100,13 @@ function mul(key::MultiplicationKey, cipher1::Ciphertext, cipher2::Ciphertext)
 end
 
 
+"""
+    square(mk::MultiplicationKey, cipher::Ciphertext)
+
+Elementwise square of an encrypted vector.
+Needs a [`MultiplicationKey`](@ref) object.
+`log_precision` of the result is doubled.
+"""
 function square(mk::MultiplicationKey, cipher::Ciphertext)
 
     params = cipher.params
@@ -119,6 +146,11 @@ function square(mk::MultiplicationKey, cipher::Ciphertext)
 end
 
 
+"""
+    negate(cipher::Ciphertext)
+
+Elementwise negation of an encrypted vector.
+"""
 function negate(cipher::Ciphertext)
     Ciphertext(
         cipher.params,
@@ -130,6 +162,11 @@ function negate(cipher::Ciphertext)
 end
 
 
+"""
+    mod_down_by(cipher::Ciphertext, dlog_cap::Int)
+
+Decreases `log_cap` of a [`Ciphertext`](@ref) object by `dlog_cap`.
+"""
 function mod_down_by(cipher::Ciphertext, dlog_cap::Int)
     Ciphertext(
         cipher.params,
@@ -141,6 +178,11 @@ function mod_down_by(cipher::Ciphertext, dlog_cap::Int)
 end
 
 
+"""
+    mod_down_to(cipher::Ciphertext, log_cap::Int)
+
+Decreases `log_cap` of a [`Ciphertext`](@ref) object to the provided value.
+"""
 function mod_down_to(cipher::Ciphertext, log_cap::Int)
     Ciphertext(
         cipher.params,
@@ -152,6 +194,11 @@ function mod_down_to(cipher::Ciphertext, log_cap::Int)
 end
 
 
+"""
+    rescale_by(cipher::Ciphertext, dlog_cap::Int)
+
+Decreases `log_cap` and `log_precision` of a [`Ciphertext`](@ref) object by `dlog_cap`.
+"""
 function rescale_by(cipher::Ciphertext, dlog_cap::Int)
     Ciphertext(
         cipher.params,
@@ -163,6 +210,11 @@ function rescale_by(cipher::Ciphertext, dlog_cap::Int)
 end
 
 
+"""
+    div_by_po2(cipher::Ciphertext, bits::Int)
+
+Elementwise division of an encrypted vector by `2^bits`.
+"""
 function div_by_po2(cipher::Ciphertext, bits::Int)
     Ciphertext(
         cipher.params,
@@ -174,6 +226,12 @@ function div_by_po2(cipher::Ciphertext, bits::Int)
 end
 
 
+"""
+    add_const(cipher::Ciphertext, cnst::Float64)
+
+Adds a floating-point number `cnst` to each element of an encrypted vector.
+Ciphertext's `log_precision` is used to encode `cnst`.
+"""
 function add_const(cipher::Ciphertext, cnst::Float64)
     tp = BinModuloInt{BigInt, cipher.log_cap}
     cnst_big = float_to_integer(tp, cnst, cipher.log_precision)
@@ -187,11 +245,23 @@ function add_const(cipher::Ciphertext, cnst::Float64)
 end
 
 
+"""
+    add_const(cipher::Ciphertext, cnst::Float64)
+
+Adds a complex number `cnst` to each element of an encrypted vector.
+Ciphertext's `log_precision` is used to encode `cnst`.
+"""
 function add_const(cipher::Ciphertext, cnst::Complex{Float64})
     negate(imul(add_const(imul(add_const(cipher, real(cnst))), -imag(cnst))))
 end
 
 
+"""
+    mul_by_const(cipher::Ciphertext, cnst::Float64, log_precision::Int)
+
+Multiplies each element of an encrypted vector by a floating-point number `cnst`.
+The provided `log_precision` is used to encode `cnst`.
+"""
 function mul_by_const(cipher::Ciphertext, cnst::Float64, log_precision::Int)
     tp = BinModuloInt{BigInt, cipher.log_cap}
     cnst_big = float_to_integer(tp, cnst, log_precision)
@@ -205,6 +275,12 @@ function mul_by_const(cipher::Ciphertext, cnst::Float64, log_precision::Int)
 end
 
 
+"""
+    mul_by_const(cipher::Ciphertext, cnst::Complex{Float64}, log_precision::Int)
+
+Multiplies each element of an encrypted vector by a complex number `cnst`.
+The provided `log_precision` is used to encode `cnst`.
+"""
 function mul_by_const(cipher::Ciphertext, cnst::Complex{Float64}, log_precision::Int)
     add(
         mul_by_const(cipher, real(cnst), log_precision),
@@ -212,6 +288,11 @@ function mul_by_const(cipher::Ciphertext, cnst::Complex{Float64}, log_precision:
 end
 
 
+"""
+    imul(cipher::Ciphertext)
+
+Multiplies each element of an encrypted vector by the imaginary unit.
+"""
 function imul(cipher::Ciphertext)
     params = cipher.params
     shift = 1 << (params.log_polynomial_length - 1)
@@ -225,6 +306,12 @@ function imul(cipher::Ciphertext)
 end
 
 
+"""
+    mul_by_const_vec(cipher::Ciphertext, v::Array{Complex{Float64}, 1}, log_precision::Int)
+
+Multiplies each element of an encrypted vector by the corresponding element of `v`.
+`log_precision` is used to encode elements of `v`.
+"""
 function mul_by_const_vec(cipher::Ciphertext, v::Array{Complex{Float64}, 1}, log_precision::Int)
     p = encode(cipher.params, v, log_precision, cipher.log_cap, true)
     mul_by_plaintext(cipher, p)
@@ -246,6 +333,12 @@ function mul_by_plaintext(cipher::Ciphertext, p::Plaintext)
 end
 
 
+"""
+    circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
+
+Rotates an encrypted vector (currently only to the left, that is `shift` must be negative).
+The [`LeftRotationKey`](@ref) must correspond to `shift`.
+"""
 function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
     params = cipher.params
     plan = rns_plan(params)
@@ -279,6 +372,12 @@ function Base.circshift(rk::LeftRotationKey, cipher::Ciphertext, shift::Integer)
 end
 
 
+"""
+    conj(ck::ConjugationKey, cipher::Ciphertext)
+
+Conjugates an encrypted vector.
+Needs a [`ConjugationKey`](@ref) object.
+"""
 function Base.conj(ck::ConjugationKey, cipher::Ciphertext)
     params = cipher.params
     plan = rns_plan(params)

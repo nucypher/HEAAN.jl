@@ -8,11 +8,21 @@ struct Plaintext
 end
 
 
+"""
+A ciphertext object created by [`encrypt`](@ref).
+"""
 struct Ciphertext
     params :: Params
     ax :: Polynomial
     bx :: Polynomial
+
+    "The limit for `log_precision`, so essentially the available \"computation resource.\""
     log_cap :: Int
+
+    """
+    The amount of ciphertext occupied by the actual value. Cannot get larger than `log_cap`.
+    Generally increased during arithmetic operations.
+    """
     log_precision :: Int
     slots :: Int
 
@@ -92,6 +102,19 @@ function encrypt(rng::AbstractRNG, key::EncryptionKey, plain::Plaintext)
 end
 
 
+"""
+    encrypt(
+        rng::AbstractRNG, key::EncryptionKey, vals::Array{Complex{Float64}, 1},
+        log_precision::Int, log_cap::Int)
+
+Creates a [`Ciphertext`](@ref) object out of a complex-valued array `vals`.
+
+`log_precision` determines the (absolute) precision used for encoding
+(cannot be larger than `log_cap`).
+
+`log_cap` is the available computation resource
+(cannot be larger than [`Params.log_lo_modulus`](@ref Params); see explanation thereof).
+"""
 function encrypt(
         rng::AbstractRNG, key::EncryptionKey, vals::Array{Complex{Float64}, 1},
         log_precision::Int, log_cap::Int)
@@ -131,6 +154,11 @@ function decode(plain::Plaintext)
 end
 
 
+"""
+    decrypt(secret_key::SecretKey, cipher::Ciphertext)
+
+Decrypts a [`Ciphertext`](@ref) object and returns the resulting complex-valued array.
+"""
 function decrypt(secret_key::SecretKey, cipher::Ciphertext)
     plain = decrypt_to_plaintext(secret_key, cipher)
     decode(plain)

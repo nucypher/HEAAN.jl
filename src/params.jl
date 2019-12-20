@@ -1,3 +1,15 @@
+"""
+    Params(; log_polynomial_length::Int=16, log_lo_modulus::Int=300)
+
+HEAAN scheme parameters.
+
+`log_polynomial_length` determines the length of polynomials
+used for keys and ciphertexts; larger length is more secure, but also slower.
+
+`log_lo_modulus` determines the maximum computation resource that a ciphertext can have.
+Larger values are more secure and allow for longer computation sequences without bootstrapping;
+but, again, are slower and make ciphertexts take more place in memory.
+"""
 struct Params
 
     log_polynomial_length :: Int # in HEAAN: N

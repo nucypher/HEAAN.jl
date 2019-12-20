@@ -8,6 +8,13 @@ function power_bin_exp(mk::MultiplicationKey, cipher::Ciphertext, log_precision:
 end
 
 
+"""
+    power(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, pwr::Int)
+
+Raises each element of an encrypted vector to the (non-negative) power `pwr`.
+`log_precision` determines the step used to rescale the intermediate values.
+Needs a [`MultiplicationKey`](@ref) object.
+"""
 function power(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, pwr::Int)
     log_pwr = num_bits(pwr) - 1
     res = power_bin_exp(mk, cipher, log_precision, log_pwr)
@@ -23,6 +30,14 @@ function power(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, pw
 end
 
 
+"""
+    inv(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, steps::Int)
+
+Calculates an inverse (`1/x`) of each element of an encrypted vector,
+using a `steps`-power approximation.
+`log_precision` determines the step used to rescale the intermediate values.
+Needs a [`MultiplicationKey`](@ref) object.
+"""
 function Base.inv(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, steps::Int)
     cbar = negate(cipher)
     cbar = add_const(cbar, 1.0)
@@ -84,6 +99,16 @@ function power_extended(mk::MultiplicationKey, cipher::Ciphertext, log_precision
 end
 
 
+"""
+    power_series(
+        mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
+        coeffs::Array{Float64, 1}; lazy::Bool=false)
+
+Calculates a power series (`a + bx + cx^2 + ...`) for each element `x` of an encrypted vector,
+with coefficients `coeffs`.
+`log_precision` is used to rescale the intermediate values.
+Needs a [`MultiplicationKey`](@ref) object.
+"""
 function power_series(
         mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int,
         coeffs::Array{Float64, 1}; lazy::Bool=false)
@@ -113,6 +138,14 @@ end
 log_plus_one_series(max_pwr) = vcat([0], [(-1)^(k-1) / k for k in 1:max_pwr])
 
 
+"""
+    log_plus_one(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, max_pwr::Int)
+
+Calculates `log(1 + x)` for each element of an encrypted vector,
+using a `max_pwr`-power approximation.
+`log_precision` determines the step used to rescale the intermediate values.
+Needs a [`MultiplicationKey`](@ref) object.
+"""
 log_plus_one(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
     power_series(mk, cipher, log_precision, log_plus_one_series(max_pwr), lazy=lazy)
 
@@ -120,6 +153,14 @@ log_plus_one(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
 exp_series(max_pwr) = [1 / factorial(k) for k in 0:max_pwr]
 
 
+"""
+    exp(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, max_pwr::Int)
+
+Calculates `exp(x)` for each element of an encrypted vector,
+using a `max_pwr`-power approximation.
+`log_precision` determines the step used to rescale the intermediate values.
+Needs a [`MultiplicationKey`](@ref) object.
+"""
 Base.exp(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
     power_series(mk, cipher, log_precision, exp_series(max_pwr), lazy=lazy)
 
@@ -130,5 +171,13 @@ sigmoid_series(max_pwr) =
     [1/2, 1/4, 0, -1/48, 0, 1/480, 0, -17/80640, 0, 31/1451520, 0][1:max_pwr+1]
 
 
+"""
+    sigmoid(mk::MultiplicationKey, cipher::Ciphertext, log_precision::Int, max_pwr::Int)
+
+Calculates the sigmoid function `exp(x) / exp(1+x)` for each element of an encrypted vector,
+using a `max_pwr`-power approximation.
+`log_precision` determines the step used to rescale the intermediate values.
+Needs a [`MultiplicationKey`](@ref) object.
+"""
 sigmoid(mk, cipher, log_precision, max_pwr; lazy::Bool=false) =
     power_series(mk, cipher, log_precision, sigmoid_series(max_pwr), lazy=lazy)

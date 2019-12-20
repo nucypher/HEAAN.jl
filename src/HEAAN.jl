@@ -29,8 +29,11 @@ export decrypt
 
 include("operators.jl")
 export add
+export sub
 export add_const
 export mul
+export square
+export negate
 export imul
 export mul_by_const
 export mul_by_const_vec
@@ -42,6 +45,7 @@ include("algo.jl")
 export power
 export sigmoid
 export log_plus_one
+export power_series
 
 include("bootstrap.jl")
 export BootstrapKey
