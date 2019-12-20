@@ -12,7 +12,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Jute = "82bedeac-9837-5b62-883a-b5b3b7c811c5"
 
 [targets]
-test = ["Random", "Jute"]
+test = ["Jute"]
 
 [compat]
 julia = "^1.0.0"
